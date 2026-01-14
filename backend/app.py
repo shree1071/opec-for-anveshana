@@ -43,10 +43,11 @@ def create_app():
 
     return app
 
+app = create_app()
+
 if __name__ == '__main__':
     print("Starting application...")
     try:
-        app = create_app()
         print("App created successfully. Running server...")
         app.run(debug=True, port=5000)
     except Exception as e:

@@ -7,6 +7,7 @@ import { Select } from "../ui/Select";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LoadingAnimation } from "../LoadingAnimation";
+import { API_ENDPOINTS } from "../../config/api";
 
 export function SimulationForm() {
     const [step, setStep] = useState(1);
@@ -32,7 +33,7 @@ export function SimulationForm() {
     const handleSubmit = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('http://localhost:5000/api/simulate', {
+            const response = await fetch(API_ENDPOINTS.simulate, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

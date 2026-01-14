@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send } from 'lucide-react';
 import { Button } from './ui/Button';
+import { API_ENDPOINTS } from '../config/api';
 
 export function CareerCoachChat({ userRoadmap }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -20,7 +21,7 @@ export function CareerCoachChat({ userRoadmap }) {
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://localhost:5000/api/chat', {
+            const response = await fetch(API_ENDPOINTS.chat, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -77,8 +78,8 @@ export function CareerCoachChat({ userRoadmap }) {
                                 >
                                     <div
                                         className={`max-w-[80%] p-3 rounded-lg ${msg.role === 'user'
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-slate-100 text-slate-900'
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-slate-100 text-slate-900'
                                             }`}
                                     >
                                         <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
