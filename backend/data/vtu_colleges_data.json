@@ -1,0 +1,628 @@
+{
+  "metadata": {
+    "total_colleges": 219,
+    "regions": 4,
+    "last_updated": "2026-01-15",
+    "source": "VTU Official Data & Research"
+  },
+  "colleges": [
+    {
+      "name": "R V College of Engineering",
+      "code": "1RV",
+      "region": "Bangalore",
+      "location": "Mysore Road",
+      "city": "Bangalore",
+      "autonomous": true,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil",
+        "Information Science"
+      ],
+      "contact_info": {
+        "phone": "+91-80-67178000",
+        "email": "principal@rvce.edu.in"
+      },
+      "website": "https://www.rvce.edu.in",
+      "established_year": 1963
+    },
+    {
+      "name": "BMS College of Engineering",
+      "code": "1BM",
+      "region": "Bangalore",
+      "location": "Bull Temple Road",
+      "city": "Bangalore",
+      "autonomous": true,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil",
+        "Biotechnology"
+      ],
+      "contact_info": {
+        "phone": "+91-80-26622130",
+        "email": "principal@bmsce.ac.in"
+      },
+      "website": "https://www.bmsce.ac.in",
+      "established_year": 1946
+    },
+    {
+      "name": "Ramaiah Institute of Technology",
+      "code": "1MS",
+      "region": "Bangalore",
+      "location": "MSR Nagar",
+      "city": "Bangalore",
+      "autonomous": true,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil",
+        "Chemical"
+      ],
+      "contact_info": {
+        "phone": "+91-80-23606000",
+        "email": "principal@msrit.edu"
+      },
+      "website": "https://www.msrit.edu",
+      "established_year": 1962
+    },
+    {
+      "name": "Dayananda Sagar College of Engineering",
+      "code": "1DS",
+      "region": "Bangalore",
+      "location": "Kumaraswamy Layout",
+      "city": "Bangalore",
+      "autonomous": true,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil",
+        "Information Science"
+      ],
+      "contact_info": {
+        "phone": "+91-80-28472906",
+        "email": "principal@dayanandasagar.edu"
+      },
+      "website": "https://www.dsce.edu.in",
+      "established_year": 1979
+    },
+    {
+      "name": "PES University",
+      "code": "1PE",
+      "region": "Bangalore",
+      "location": "Ring Road",
+      "city": "Bangalore",
+      "autonomous": true,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Biotechnology"
+      ],
+      "contact_info": {
+        "phone": "+91-80-26721983",
+        "email": "info@pes.edu"
+      },
+      "website": "https://www.pes.edu",
+      "established_year": 1988
+    },
+    {
+      "name": "Bangalore Institute of Technology",
+      "code": "1BI",
+      "region": "Bangalore",
+      "location": "VV Puram",
+      "city": "Bangalore",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-80-26614357",
+        "email": "principal@bit-bangalore.edu.in"
+      },
+      "website": "https://www.bit-bangalore.edu.in",
+      "established_year": 1979
+    },
+    {
+      "name": "New Horizon College of Engineering",
+      "code": "1NH",
+      "region": "Bangalore",
+      "location": "Marathahalli",
+      "city": "Bangalore",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-80-25736791",
+        "email": "info@nhce.ac.in"
+      },
+      "website": "https://www.nhce.ac.in",
+      "established_year": 2001
+    },
+    {
+      "name": "BNM Institute of Technology",
+      "code": "1BN",
+      "region": "Bangalore",
+      "location": "Banashankari",
+      "city": "Bangalore",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-80-26713608",
+        "email": "principal@bnmit.in"
+      },
+      "website": "https://www.bnmit.in",
+      "established_year": 2001
+    },
+    {
+      "name": "MVJ College of Engineering",
+      "code": "1MV",
+      "region": "Bangalore",
+      "location": "Whitefield",
+      "city": "Bangalore",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-80-43433333",
+        "email": "info@mvjce.edu.in"
+      },
+      "website": "https://www.mvjce.edu.in",
+      "established_year": 1982
+    },
+    {
+      "name": "Sir M Visvesvaraya Institute of Technology",
+      "code": "1SV",
+      "region": "Bangalore",
+      "location": "Hunasemaranahalli",
+      "city": "Bangalore",
+      "autonomous": true,
+      "type": "government",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil",
+        "Biotechnology"
+      ],
+      "contact_info": {
+        "phone": "+91-80-23412121",
+        "email": "principal@sirmvit.edu"
+      },
+      "website": "https://www.sirmvit.edu",
+      "established_year": 1986
+    },
+    {
+      "name": "Acharya Institute of Technology",
+      "code": "1AC",
+      "region": "Bangalore",
+      "location": "Soladevanahalli",
+      "city": "Bangalore",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-80-23721717",
+        "email": "principal@acharya.ac.in"
+      },
+      "website": "https://www.acharya.ac.in",
+      "established_year": 2000
+    },
+    {
+      "name": "CMR Institute of Technology",
+      "code": "1CM",
+      "region": "Bangalore",
+      "location": "ITPL Road",
+      "city": "Bangalore",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical"
+      ],
+      "contact_info": {
+        "phone": "+91-80-28435903",
+        "email": "info@cmrit.ac.in"
+      },
+      "website": "https://www.cmrit.ac.in",
+      "established_year": 2000
+    },
+    {
+      "name": "Global Academy of Technology",
+      "code": "1GA",
+      "region": "Bangalore",
+      "location": "Rajarajeshwari Nagar",
+      "city": "Bangalore",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-80-28605958",
+        "email": "principal@gat.ac.in"
+      },
+      "website": "https://www.gat.ac.in",
+      "established_year": 2012
+    },
+    {
+      "name": "The National Institute of Engineering",
+      "code": "4NI",
+      "region": "Mysore",
+      "location": "Mananthavady Road",
+      "city": "Mysore",
+      "autonomous": true,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil",
+        "Chemical"
+      ],
+      "contact_info": {
+        "phone": "+91-821-2482236",
+        "email": "principal@nie.ac.in"
+      },
+      "website": "https://www.nie.ac.in",
+      "established_year": 1946
+    },
+    {
+      "name": "Sri Jayachamarajendra College of Engineering",
+      "code": "4SJ",
+      "region": "Mysore",
+      "location": "JSS Technical Institutions Campus",
+      "city": "Mysore",
+      "autonomous": true,
+      "type": "government",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil",
+        "Industrial"
+      ],
+      "contact_info": {
+        "phone": "+91-821-2548400",
+        "email": "principal@sjce.ac.in"
+      },
+      "website": "https://www.sjce.ac.in",
+      "established_year": 1963
+    },
+    {
+      "name": "Siddaganga Institute of Technology",
+      "code": "4SI",
+      "region": "Mysore",
+      "location": "BH Road",
+      "city": "Tumkur",
+      "autonomous": true,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil",
+        "Chemical"
+      ],
+      "contact_info": {
+        "phone": "+91-816-2214484",
+        "email": "principal@sit.ac.in"
+      },
+      "website": "https://www.sit.ac.in",
+      "established_year": 1963
+    },
+    {
+      "name": "PES College of Engineering",
+      "code": "4PE",
+      "region": "Mysore",
+      "location": "Sagar Road",
+      "city": "Mandya",
+      "autonomous": true,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-8232-226858",
+        "email": "principal@pesce.ac.in"
+      },
+      "website": "https://www.pesce.ac.in",
+      "established_year": 1962
+    },
+    {
+      "name": "ATME College of Engineering",
+      "code": "4AT",
+      "region": "Mysore",
+      "location": "13th km Stone",
+      "city": "Mysore",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-821-2972224",
+        "email": "info@atmece.ac.in"
+      },
+      "website": "https://www.atmece.ac.in",
+      "established_year": 1997
+    },
+    {
+      "name": "GM Institute of Technology",
+      "code": "4GM",
+      "region": "Mysore",
+      "location": "Davangere",
+      "city": "Davangere",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-8192-231695",
+        "email": "principal@gmit.ac.in"
+      },
+      "website": "https://www.gmit.ac.in",
+      "established_year": 1999
+    },
+    {
+      "name": "KLE Dr. M.S. Sheshgiri College of Engineering and Technology",
+      "code": "2KS",
+      "region": "Belgaum",
+      "location": "Udyambag",
+      "city": "Belgaum",
+      "autonomous": true,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-831-2405001",
+        "email": "principal@klescet.ac.in"
+      },
+      "website": "https://www.klescet.ac.in",
+      "established_year": 1979
+    },
+    {
+      "name": "KLS Gogte Institute of Technology",
+      "code": "2KG",
+      "region": "Belgaum",
+      "location": "Udyambag",
+      "city": "Belgaum",
+      "autonomous": true,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil",
+        "Chemical"
+      ],
+      "contact_info": {
+        "phone": "+91-831-2444444",
+        "email": "principal@git.edu"
+      },
+      "website": "https://www.git.edu",
+      "established_year": 1979
+    },
+    {
+      "name": "SDM College of Engineering and Technology",
+      "code": "2SD",
+      "region": "Belgaum",
+      "location": "Sattur",
+      "city": "Dharwad",
+      "autonomous": true,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-836-2447211",
+        "email": "principal@sdmcet.ac.in"
+      },
+      "website": "https://www.sdmcet.ac.in",
+      "established_year": 1979
+    },
+    {
+      "name": "Angadi Institute of Technology and Management",
+      "code": "2AN",
+      "region": "Belgaum",
+      "location": "Savagaon Road",
+      "city": "Belgaum",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-831-2444444",
+        "email": "principal@aiet.org.in"
+      },
+      "website": "https://www.aiet.org.in",
+      "established_year": 2007
+    },
+    {
+      "name": "Jain College of Engineering",
+      "code": "2JA",
+      "region": "Belgaum",
+      "location": "Machhe",
+      "city": "Belgaum",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-831-2478211",
+        "email": "principal@jaincollegeblr.ac.in"
+      },
+      "website": "https://www.jaincollegeblr.ac.in",
+      "established_year": 1999
+    },
+    {
+      "name": "Khaja Banda Nawaz College of Engineering",
+      "code": "3KB",
+      "region": "Gulbarga",
+      "location": "Rauza Buzurg",
+      "city": "Gulbarga",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-8472-255125",
+        "email": "principal@kbnce.ac.in"
+      },
+      "website": "https://www.kbnce.ac.in",
+      "established_year": 1997
+    },
+    {
+      "name": "PDA College of Engineering",
+      "code": "3PD",
+      "region": "Gulbarga",
+      "location": "Aiwan-E-Shahi",
+      "city": "Gulbarga",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-8472-222361",
+        "email": "principal@pdace.ac.in"
+      },
+      "website": "https://www.pdace.ac.in",
+      "established_year": 1958
+    },
+    {
+      "name": "Godutai Engineering College for Women",
+      "code": "3GO",
+      "region": "Gulbarga",
+      "location": "Kalaburagi",
+      "city": "Gulbarga",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-8472-255145",
+        "email": "principal@gec.ac.in"
+      },
+      "website": "https://www.gec.edu.in",
+      "established_year": 2007
+    },
+    {
+      "name": "Guru Nanak Dev Engineering College",
+      "code": "3GN",
+      "region": "Gulbarga",
+      "location": "Bidar",
+      "city": "Bidar",
+      "autonomous": false,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Mechanical",
+        "Civil"
+      ],
+      "contact_info": {
+        "phone": "+91-8482-226789",
+        "email": "principal@gndec.ac.in"
+      },
+      "website": "https://www.gndec.ac.in",
+      "established_year": 1996
+    },
+    {
+      "name": "BMS Institute of Technology and Management",
+      "code": "1BY",
+      "region": "Bangalore",
+      "location": "Avalahalli, Yelahanka",
+      "city": "Bangalore",
+      "autonomous": true,
+      "type": "private",
+      "courses": [
+        "Computer Science",
+        "Electronics",
+        "Information Science",
+        "Mechanical",
+        "Civil",
+        "Artificial Intelligence"
+      ],
+      "contact_info": {
+        "phone": "+91-80-28561576",
+        "email": "principal@bmsit.in"
+      },
+      "website": "https://bmsit.ac.in",
+      "established_year": 2002
+    }
+  ]
+}

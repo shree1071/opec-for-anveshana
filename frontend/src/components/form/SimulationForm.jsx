@@ -6,10 +6,12 @@ import { Input } from "../ui/Input";
 import { Select } from "../ui/Select";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "@clerk/clerk-react";
 import { LoadingAnimation } from "../LoadingAnimation";
 import { API_ENDPOINTS } from "../../config/api";
 
 export function SimulationForm() {
+    const { user } = useUser();
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
         education: "",
@@ -38,7 +40,10 @@ export function SimulationForm() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ user_profile: formData }),
+                body: JSON.stringify({
+                    clerk_id: user?.id,
+                    user_profile: formData
+                }),
             });
 
             const data = await response.json();
@@ -63,7 +68,7 @@ export function SimulationForm() {
     }
 
     return (
-        <div className="max-w-2xl mx-auto px-4 py-20">
+        <div className="max-w-2xl mx-auto px-4 py-12" style={{ backgroundColor: 'transparent' }}>
             <div className="mb-8">
                 <div className="flex justify-between text-sm font-medium text-slate-500 mb-2">
                     <span>Step {step} of 4</span>

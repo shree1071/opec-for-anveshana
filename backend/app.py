@@ -33,9 +33,26 @@ def create_app():
     # Initialize DB
     init_db(app)
     
+    # Register global error handlers
+    from middleware.error_handler import register_error_handlers
+    register_error_handlers(app)
+    
     # Register Blueprints
     app.register_blueprint(main_bp, url_prefix='/api')
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    
+    # College Directory Blueprint
+    from routes.college_routes import college_bp
+    app.register_blueprint(college_bp)
+    
+    # OPEC Blueprints
+    from routes.opec.student import student_bp
+    from routes.opec.chat import chat_bp
+    from routes.opec.auth import auth_bp as opec_auth_bp
+    
+    app.register_blueprint(student_bp, url_prefix='/api/opec/student')
+    app.register_blueprint(chat_bp, url_prefix='/api/opec/chat')
+    app.register_blueprint(opec_auth_bp, url_prefix='/api/opec/auth')
     
     @app.route('/')
     def health_check():

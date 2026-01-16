@@ -1,0 +1,6 @@
+backend
+database
+.git
+*.md
+.env
+.env.local

@@ -1,0 +1,177 @@
+from google import genai
+from google.genai import types
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
+import os
+import json
+import hashlib
+import time
+import sys
+from functools import lru_cache
+from .prompts import SIGNAL_DETECTION_PROMPT, OPEC_ASSISTANT_PROMPT
+from core.ai.api_key_manager import get_key_manager, QuotaExhaustedError
+from middleware.error_handler import APIError
+
+print("DEBUG: gemini_service.py loading...", file=sys.stderr)
+
+# Simple in-memory cache for responses
+response_cache = {}
+
+def configure_gemini():
+    """Initialize Gemini with API key from key manager"""
+    try:
+        key_manager = get_key_manager()
+        api_key = key_manager.get_available_key()
+        client = genai.Client(api_key=api_key)
+        return client, api_key
+    except QuotaExhaustedError as e:
+        raise APIError(
+            message=str(e),
+            status_code=429,
+            error_code="QUOTA_EXCEEDED"
+        )
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=3, min=10, max=120),
+    reraise=True
+)
+def call_gemini_with_retry(client, model, prompt, current_key):
+    """Call Gemini API with retry logic and quota tracking"""
+    try:
+        return client.models.generate_content(
+            model=model,
+            contents=prompt
+        )
+    except Exception as e:
+        error_msg = str(e).lower()
+        # Check if it's a quota error
+        if '429' in error_msg or 'quota' in error_msg or 'resource_exhausted' in error_msg:
+            # Mark this key as exhausted
+            key_manager = get_key_manager()
+            key_manager.mark_exhausted(current_key)
+            raise QuotaExhaustedError(
+                "API quota exceeded on this key. Rotating to next key."
+            )
+        raise
+
+def call_gemini_no_retry(client, model, prompt):
+    return client.models.generate_content(
+        model=model,
+        contents=prompt
+    )
+
+def detect_signals(message, context=""):
+    # DISABLED: Signal detection is consuming quota but not critical
+    # Return empty signals to save API quota for actual chat responses
+    print("DEBUG: Signal detection disabled to conserve API quota")
+    return {"signals": {}}
+
+def get_cache_key(message, context_messages):
+    """Generate cache key from message and context"""
+    context_str = str([m.get('content', '')[:50] for m in context_messages[-3:]])
+    combined = f"{message}_{context_str}"
+    return hashlib.md5(combined.encode()).hexdigest()
+
+def generate_chat_response(message, context_messages=None, active_patterns=None, student_context=None):
+    """
+    Generate a chat response using Gemini with pattern detection integration.
+    Now includes student context from onboarding for personalization.
+    Uses API key rotation for better quota management.
+    """
+    # Generate cache key
+    cache_key = hashlib.md5(f"{message}{json.dumps(context_messages or [])}".encode()).hexdigest()
+    
+    # Check cache first
+    if cache_key in response_cache:
+        print("[CACHE HIT] Returning cached response")
+        return response_cache[cache_key]
+    
+    # Format pattern interventions
+    pattern_text = "None"
+    if active_patterns:
+        pattern_text = "\n".join([f"- {p['name']}: {p['intervention_template']}" for p in active_patterns])
+    
+    # Format student context for the prompt
+    student_context_str = ""
+    if student_context:
+        student_context_str = "\n".join([f"{k}: {v}" for k, v in student_context.items() if v])
+    
+    system_prompt = OPEC_ASSISTANT_PROMPT.format(
+        pattern_interventions=pattern_text,
+        student_context=student_context_str
+    )
+    
+    # Build chat history
+    history = [
+        {"role": "user", "parts": [system_prompt]}
+    ]
+    
+    # Add context messages (simplified)
+    if context_messages:
+        for msg in context_messages[-5:]:
+            role = "user" if msg['role'] == 'user' else "model"
+            history.append({"role": role, "parts": [msg['content']]})
+        
+    history.append({"role": "user", "parts": [message]})
+    
+    try:
+        client, current_key = configure_gemini()
+        
+        # Build full prompt
+        full_prompt = system_prompt + "\n\n"
+        for m in history[1:]:
+             full_prompt += f"{m['role'].upper()}: {m['parts'][0]}\n"
+        full_prompt += "MODEL:"
+        
+        try:
+            response = call_gemini_with_retry(client, 'gemini-3-flash-preview', full_prompt, current_key)
+        except RetryError:
+            print("Chat generation 3.0 failed. Falling back to 2.0-flash-exp")
+            try:
+                response = call_gemini_with_retry(client, 'gemini-2.0-flash-exp', full_prompt, current_key)
+            except:
+                raise # Re-raise if fallback also fails
+        
+        response_text = response.text
+        
+        # Cache the response (expires after 1 hour in simple dict)
+        response_cache[cache_key] = response_text
+        
+        return response_text
+    except QuotaExhaustedError as e:
+        # Try one more time with a different key
+        try:
+            client, current_key = configure_gemini()
+            # Build full prompt again (if needed, or reuse from above)
+            full_prompt = system_prompt + "\n\n"
+            for m in history[1:]:
+                 full_prompt += f"{m['role'].upper()}: {m['parts'][0]}\n"
+            full_prompt += "MODEL:"
+            response = call_gemini_with_retry(client, 'gemini-3-flash-preview', full_prompt, current_key) # Try primary model again
+            response_text = response.text
+            response_cache[cache_key] = response_text
+            return response_text
+        except QuotaExhaustedError:
+            raise APIError(
+                message="All API keys are currently rate-limited. Please try again in a few minutes.",
+                status_code=429,
+                error_code="QUOTA_EXCEEDED"
+            )
+        except Exception as e:
+            error_msg = str(e)
+            print(f"Error generating response after key rotation: {error_msg}")
+            raise APIError(
+                message="Failed to generate response after key rotation. Please try again.",
+                status_code=500,
+                error_code="AI_ERROR"
+            )
+    except APIError:
+        raise # Re-raise APIError from configure_gemini
+    except Exception as e:
+        error_msg = str(e)
+        print(f"Error generating response: {error_msg}")
+        raise APIError(
+            message="Failed to generate response. Please try again.",
+            status_code=500,
+            error_code="AI_ERROR"
+        )

@@ -67,13 +67,23 @@ CRITICAL FLOWCHART RULES:
 DO NOT include markdown formatting (like ```json or ```mermaid). Just return the raw JSON string.
 """
 
-def run_career_simulation(user_profile):
-    api_key = os.environ.get('GEMINI_API_KEY')
-    if not api_key:
-        logger.warning("GEMINI_API_KEY not found. Using mock response.")
-        return _get_mock_response()
 
-import google.generativeai as genai
+
+from google import genai
+from google.genai import types
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
+
+# Helper function for retrying on errors (handle 429 broadly)
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=5, max=60),
+    reraise=True
+)
+def call_gemini_with_retry(client, model, prompt):
+    return client.models.generate_content(
+        model=model,
+        contents=prompt
+    )
 
 def run_career_simulation(user_profile):
     api_key = os.environ.get('GEMINI_API_KEY')
@@ -82,37 +92,63 @@ def run_career_simulation(user_profile):
         return _get_mock_response()
 
     try:
-        genai.configure(api_key=api_key)
+        client = genai.Client(api_key=api_key)
         
-        # dynamic model selection
-        valid_model = None
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                if 'gemini' in m.name:
-                    valid_model = m.name
-                    break
-        
-        if not valid_model:
-            # Fallback if list_models fails or returns nothing suitable
-            valid_model = 'gemini-2.5-flash'
+        # Hardcoded specific model for stability instead of dynamic listing which can be flaky
+        valid_model = 'gemini-3-flash-preview'
             
         logger.info(f"Using Gemini Model: {valid_model}")
-        model = genai.GenerativeModel(valid_model)
 
-        # Enhanced Prompt
+        # Enhanced Prompt with Student Personalization
+        student_name = user_profile.get('name', 'Student')
+        education_context = ""
+        if user_profile.get('education_level'):
+            education_context += f"\nEducation Level: {user_profile.get('education_level')}"
+        if user_profile.get('grade_or_year'):
+            education_context += f"\nCurrent Year/Grade: {user_profile.get('grade_or_year')}"
+        if user_profile.get('stream_or_branch'):
+            education_context += f"\nStream/Branch: {user_profile.get('stream_or_branch')}"
+        if user_profile.get('interests'):
+            education_context += f"\nInterests: {user_profile.get('interests')}"
+        if user_profile.get('goals'):
+            education_context += f"\nCareer Goals: {user_profile.get('goals')}"
+        
+        # Add chat insights if available
+        chat_insights_text = ""
+        if user_profile.get('chat_insights'):
+            insights = user_profile['chat_insights']
+            chat_insights_text = f"\n\nCHAT CONVERSATION INSIGHTS (Use this to understand {student_name}'s actual concerns):"
+            chat_insights_text += f"\n- Total conversations: {insights.get('total_messages', 0)} messages"
+            chat_insights_text += f"\n- Engagement level: {insights.get('engagement_level', 'unknown')}"
+            
+            if insights.get('recent_questions'):
+                chat_insights_text += f"\n- Recent questions they asked: {', '.join(insights['recent_questions'][:3])}"
+            if insights.get('recent_concerns'):
+                chat_insights_text += f"\n- Recent topics discussed: {', '.join(insights['recent_concerns'][:3])}"
+            
+            chat_insights_text += "\n\nIMPORTANT: Use these chat insights to address their ACTUAL concerns in the roadmap, not generic advice."
+        
         detailed_prompt = f"""
         {SYSTEM_PROMPT}
 
-        CRITICAL INSTRUCTION: Provide extremely detailed, actionable advice.
-        - For 'skills_to_acquire', do not just list 'Python'. Say 'Advanced Python (AsyncIO, Pydantic, Fast API)'.
-        - For 'milestones', be specific: 'Build a full-stack e-commerce app with Stripe integration'.
-        - In 'analysis', provide 3-4 sentences per section, not just one line.
+        CRITICAL INSTRUCTION: This roadmap is for {student_name}. Provide extremely detailed, actionable advice.
+        - Address them by name in the analysis
+        - For 'skills_to_acquire', be specific: 'Advanced Python (AsyncIO, Pydantic, Fast API)', not just 'Python'
+        - For 'milestones', be specific: 'Build a full-stack e-commerce app with Stripe integration'
+        - In 'analysis', provide 3-4 sentences per section, reference their goals and interests
+        - Make it personal to {student_name}'s context
+        {education_context}
+        {chat_insights_text}
         
         User Profile:
         {json.dumps(user_profile)}
         """
 
-        response = model.generate_content(detailed_prompt)
+        try:
+            response = call_gemini_with_retry(client, valid_model, detailed_prompt)
+        except RetryError:
+            logger.warning(f"Model {valid_model} failed after retries. Falling back to gemini-2.0-flash-exp")
+            response = call_gemini_with_retry(client, 'gemini-2.0-flash-exp', detailed_prompt)
         response_text = response.text
         
         # Clean up if markdown is present
@@ -165,20 +201,9 @@ def chat_with_coach(question, user_context=None):
         return "I'm sorry, I cannot answer right now. (Missing API Key)"
 
     try:
-        genai.configure(api_key=api_key)
+        client = genai.Client(api_key=api_key)
         
-        # Use the first available model
-        valid_model = None
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                if 'gemini' in m.name:
-                    valid_model = m.name
-                    break
-        
-        if not valid_model:
-            valid_model = 'gemini-2.5-flash'
-            
-        model = genai.GenerativeModel(valid_model)
+        valid_model = 'gemini-3-flash-preview'
 
         context_str = ""
         if user_context:
@@ -192,7 +217,11 @@ User Question: {question}
 
 Provide a helpful, actionable response. Be specific and reference their roadmap if relevant."""
 
-        response = model.generate_content(prompt)
+        try:
+            response = call_gemini_with_retry(client, valid_model, prompt)
+        except RetryError:
+            logger.warning(f"Model {valid_model} failed after retries. Falling back to gemini-2.0-flash-exp")
+            response = call_gemini_with_retry(client, 'gemini-2.0-flash-exp', prompt)
         return response.text
         
     except Exception as e:

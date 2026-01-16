@@ -1,14 +1,9 @@
-import os
-from supabase import create_client, Client
 from flask import g
+from core.supabase_client import get_supabase_client
 
 def get_db():
     if 'db' not in g:
-        url = os.environ.get("SUPABASE_URL")
-        key = os.environ.get("SUPABASE_KEY")
-        if not url or not key:
-            raise ValueError("Supabase URL and Key must be set in .env")
-        g.db = create_client(url, key)
+        g.db = get_supabase_client()
     return g.db
 
 def init_db(app):
