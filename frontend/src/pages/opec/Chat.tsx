@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser } from "@clerk/clerk-react";
 import { Button } from "../../components/ui";
-import { Brain, Smile, Meh, Frown, AlertCircle, PanelRightOpen, ArrowRight, Minimize2, Maximize2, FileText, Trash2, Download, Activity } from "lucide-react";
+import { Brain, Smile, Meh, Frown, AlertCircle, PanelRightOpen, ArrowRight, Minimize2, Maximize2, FileText, Trash2, Download, Activity, Mic, Square, Headphones } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageBubble } from "./components/MessageBubble";
 import { InsightsSidebar } from "./components/InsightsSidebar";
 import { CommandPalette, type CommandAction } from "./components/CommandPalette";
+import { VoiceMode } from "./components/VoiceMode";
 
 import type { Message, ToastMessage } from "./types";
 
@@ -26,18 +27,49 @@ export const Chat = () => {
     const [isZenMode, setIsZenMode] = useState(false);
     const [generatingReport, setGeneratingReport] = useState(false);
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const [isVoiceModeOpen, setIsVoiceModeOpen] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const sidebarRef = useRef<HTMLDivElement>(null);
+    const recognitionRef = useRef<any>(null);
 
-    // const quickReplies = [
-    //     "I'm feeling uncertain about my career path",
-    //     "Help me understand my strengths",
-    //     "I'm stuck between multiple options",
-    //     "What should I consider when choosing a major?"
-    // ];
+    // --- Voice Logic ---
+    useEffect(() => {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+            recognitionRef.current = new SpeechRecognition();
+            recognitionRef.current.continuous = false;
+            recognitionRef.current.interimResults = false;
+
+            recognitionRef.current.onresult = (event: any) => {
+                const transcript = event.results[0][0].transcript;
+                setInputValue(prev => prev ? prev + " " + transcript : transcript);
+                setIsListening(false);
+            };
+
+            recognitionRef.current.onerror = (event: any) => {
+                console.error("Speech recognition error", event.error);
+                setIsListening(false);
+                showToast("Voice input failed. Please try again.", "error");
+            };
+
+            recognitionRef.current.onend = () => {
+                setIsListening(false);
+            };
+        }
+    }, []);
+
+    const toggleListening = () => {
+        if (isListening) {
+            recognitionRef.current?.stop();
+        } else {
+            recognitionRef.current?.start();
+            setIsListening(true);
+        }
+    };
 
     // --- Command Palette Logic ---
     useEffect(() => {
@@ -200,17 +232,29 @@ export const Chat = () => {
         }
     ];
 
+    const [studentProfile, setStudentProfile] = useState<any>(null);
+
     // --- Data Loading & Smart Context ---
     useEffect(() => {
         const fetchHistory = async () => {
             if (!user?.id) return;
 
-            try {
-                const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-                const res = await fetch(`${API_URL}/api/opec/chat/history?clerk_id=${user.id}`);
+            const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-                if (res.ok) {
-                    const data = await res.json();
+            try {
+                // Fetch Profile and History in parallel
+                const [historyRes, profileRes] = await Promise.all([
+                    fetch(`${API_URL}/api/opec/chat/history?clerk_id=${user.id}`),
+                    fetch(`${API_URL}/api/opec/student/profile?clerk_id=${user.id}`)
+                ]);
+
+                if (profileRes.ok) {
+                    const profileData = await profileRes.json();
+                    setStudentProfile(profileData);
+                }
+
+                if (historyRes.ok) {
+                    const data = await historyRes.json();
                     if (data.messages && data.messages.length > 0) {
                         setMessages(data.messages);
                         setClarityScore(Math.min(data.messages.length * 5, 100));
@@ -221,11 +265,9 @@ export const Chat = () => {
                         });
                         setDetectedPatterns(Array.from(patterns));
 
-                        // Smart Context Re-entry (Only if last message wasn't too long ago?)
+                        // Smart Context Re-entry
                         const lastMsg = data.messages[data.messages.length - 1];
                         if (Date.now() - lastMsg.timestamp > 1000 * 60 * 60) { // 1 hour gap
-                            // Add a subtle "Welcome Back" system note (local only)
-                            // Note: We don't save this to DB to avoid clutter, just visible in session
                             setTimeout(() => {
                                 setMessages(prev => [...prev, {
                                     role: 'assistant',
@@ -233,7 +275,7 @@ export const Chat = () => {
                                     signals: {},
                                     timestamp: Date.now(),
                                     status: 'sent',
-                                    isSystem: true // New flag for styling system notes differently if needed
+                                    isSystem: true
                                 } as Message]);
                                 scrollToBottom();
                             }, 500);
@@ -250,8 +292,8 @@ export const Chat = () => {
                     }
                 }
             } catch (error) {
-                console.error("Failed to fetch history:", error);
-                showToast("Failed to load chat history", "error");
+                console.error("Failed to fetch data:", error);
+                showToast("Failed to load user data", "error");
             } finally {
                 setInitialLoading(false);
             }
@@ -345,7 +387,6 @@ export const Chat = () => {
                     setDetectedPatterns(prev => [...new Set([...prev, ...Object.keys(data.signals).slice(0, 2)])]);
                 }
 
-                // Progressive Clarity Score simulation for immediate feedback
                 setClarityScore(prev => Math.min(prev + Math.floor(Math.random() * 3) + 1, 99));
             } else {
                 setMessages(prev => prev.map(msg =>
@@ -387,8 +428,6 @@ export const Chat = () => {
         return 'from-slate-400 to-slate-500';
     };
 
-
-
     if (initialLoading) {
         return (
             <div className="flex items-center justify-center h-[calc(100vh-64px)] bg-slate-50">
@@ -403,13 +442,25 @@ export const Chat = () => {
 
     return (
         <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-[#F9F8F6] relative font-sans text-slate-800">
+            {/* Voice Mode Overlay */}
+            <VoiceMode
+                isOpen={isVoiceModeOpen}
+                onClose={() => setIsVoiceModeOpen(false)}
+                userData={{
+                    ...studentProfile,
+                    name: studentProfile?.name || user?.firstName || "Student",
+                    interests: studentProfile?.interests || detectedPatterns.join(", ") || "general career exploration",
+                    recent_mood: currentMood
+                }}
+            />
+
             <CommandPalette
                 isOpen={isCommandPaletteOpen}
                 onClose={() => setIsCommandPaletteOpen(false)}
                 actions={powerUserActions}
             />
 
-            {/* Zen Mode Toggle (Floating when in Zen Mode) */}
+            {/* Zen Mode Toggle (only when in Zen Mode) */}
             <AnimatePresence>
                 {isZenMode && (
                     <motion.button
@@ -456,7 +507,7 @@ export const Chat = () => {
                             ))}
                         </AnimatePresence>
 
-                        {/* Starburst Loading Animation - Larger and Lively */}
+                        {/* Starburst Loading Animation */}
                         {loading && (
                             <div className="flex justify-start pl-2 py-4">
                                 <div className="w-14 h-14 text-[#d97757] animate-[spin_4s_linear_infinite]">
@@ -472,20 +523,20 @@ export const Chat = () => {
 
                 {/* Floating Input Area - Claude Style */}
                 <div className="w-full px-4 pb-8 pt-2 bg-gradient-to-t from-[#F9F8F6] via-[#F9F8F6] to-transparent">
-                    <div className="max-w-3xl mx-auto bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 transition-all p-2 relative">
+                    <div className={`max-w-3xl mx-auto bg-white rounded-3xl border shadow-xl shadow-slate-200/50 transition-all p-2 relative ${isListening ? 'border-red-400 ring-2 ring-red-100' : 'border-slate-200'}`}>
 
                         <textarea
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Reply..."
-                            className="w-full pl-4 pr-16 py-3 bg-transparent border-0 focus:ring-0 resize-none h-16 max-h-48 text-lg text-slate-800 placeholder:text-slate-400 placeholder:font-normal leading-relaxed scrollbar-hide"
+                            placeholder={isListening ? "Listening..." : "Reply..."}
+                            className={`w-full pl-4 pr-16 py-3 bg-transparent border-0 focus:ring-0 resize-none h-16 max-h-48 text-lg text-slate-800 placeholder:font-normal leading-relaxed scrollbar-hide ${isListening ? 'placeholder:text-red-400' : 'placeholder:text-slate-400'}`}
                             disabled={!isOnline}
                         />
 
                         <div className="flex items-center justify-between px-2 pb-1">
                             <div className="flex items-center gap-1">
-                                {/* Mood Selectors disguised as 'Tools' */}
+                                {/* Mood Selectors */}
                                 {[
                                     { mood: 'happy' as const, icon: Smile },
                                     { mood: 'neutral' as const, icon: Meh },
@@ -502,23 +553,55 @@ export const Chat = () => {
                                 ))}
                             </div>
 
-                            {/* Send Button */}
-                            <Button
-                                onClick={() => handleSendMessage()}
-                                disabled={!inputValue.trim() || loading || !isOnline}
-                                className={`h-10 w-10 !p-0 rounded-xl flex items-center justify-center transition-all duration-200 ${inputValue.trim() ? 'bg-pink-600 hover:bg-pink-700 text-white shadow-md transform hover:scale-105' : 'bg-pink-100 text-pink-300 cursor-not-allowed'}`}
-                            >
-                                <ArrowRight className="w-5 h-5" />
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                {/* Mic Button - Quick Voice Input */}
+                                <button
+                                    onClick={toggleListening}
+                                    className={`p-2 rounded-xl transition-all ${isListening ? 'bg-red-50 text-red-500 animate-pulse' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                                    title={isListening ? "Stop Listening" : "Voice Input"}
+                                >
+                                    {isListening ? <Square className="w-5 h-5 fill-current" /> : <Mic className="w-5 h-5" />}
+                                </button>
+
+                                {/* Divider */}
+                                <div className="w-px h-6 bg-slate-200" />
+
+                                {/* Voice Agent Button - Full Conversation */}
+                                <button
+                                    onClick={() => setIsVoiceModeOpen(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 rounded-xl shadow-lg shadow-emerald-500/30 transition-all hover:scale-105"
+                                    title="Start Voice Agent Conversation"
+                                >
+                                    <Headphones className="w-5 h-5 text-white" />
+                                    <span className="text-white font-semibold text-sm">Voice Agent</span>
+                                </button>
+
+                                {/* Send Button */}
+                                <Button
+                                    onClick={() => handleSendMessage()}
+                                    disabled={!inputValue.trim() || loading || !isOnline}
+                                    className={`h-10 w-10 !p-0 rounded-xl flex items-center justify-center transition-all duration-200 ${inputValue.trim() ? 'bg-pink-600 hover:bg-pink-700 text-white shadow-md transform hover:scale-105' : 'bg-pink-100 text-pink-300 cursor-not-allowed'}`}
+                                >
+                                    <ArrowRight className="w-5 h-5" />
+                                </Button>
+                            </div>
                         </div>
                     </div>
-                    <div className="text-center mt-4 text-xs text-slate-400 font-medium tracking-wide">
-                        AI can make mistakes. Please verify important information.
-                    </div>
+
+                    {isListening && (
+                        <div className="text-center mt-2 text-xs text-red-500 font-medium animate-pulse">
+                            ● Listening... Speak clearly
+                        </div>
+                    )}
+                    {!isListening && (
+                        <div className="text-center mt-4 text-xs text-slate-400 font-medium tracking-wide">
+                            AI can make mistakes. Please verify important information.
+                        </div>
+                    )}
                 </div>
             </div>
-            {/* End Main Chat Column */}
-            {/* Toast Layer (Global) */}
+
+            {/* Toast Layer */}
             <div className="fixed top-20 right-4 z-[100] space-y-2 pointer-events-none">
                 <AnimatePresence>
                     {toasts.map(toast => (
@@ -538,6 +621,7 @@ export const Chat = () => {
                     ))}
                 </AnimatePresence>
             </div>
+
             {/* Resizer Handle */}
             <AnimatePresence>
                 {!isZenMode && isSidebarOpen && (
@@ -565,6 +649,5 @@ export const Chat = () => {
                 />
             )}
         </div>
-
     );
 };

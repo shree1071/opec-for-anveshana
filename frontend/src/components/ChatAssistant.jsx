@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Bot } from "lucide-react";
+import { MessageCircle, X, Send, Bot, Mic, Volume2, Square } from "lucide-react";
 import { Button } from "./ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from 'react-markdown';
@@ -12,7 +12,65 @@ export function ChatAssistant() {
     ]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
     const messagesEndRef = useRef(null);
+
+    // Voice Recognition Setup
+    const recognitionRef = useRef(null);
+
+    useEffect(() => {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognitionRef.current = new SpeechRecognition();
+            recognitionRef.current.continuous = false;
+            recognitionRef.current.interimResults = false;
+
+            recognitionRef.current.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                setInput(transcript);
+                setIsListening(false);
+                // Optional: Auto-submit after voice
+                // handleSubmit(null, transcript);
+            };
+
+            recognitionRef.current.onerror = (event) => {
+                console.error("Speech recognition error", event.error);
+                setIsListening(false);
+            };
+
+            recognitionRef.current.onend = () => {
+                setIsListening(false);
+            };
+        }
+    }, []);
+
+    const toggleListening = () => {
+        if (isListening) {
+            recognitionRef.current?.stop();
+        } else {
+            recognitionRef.current?.start();
+            setIsListening(true);
+        }
+    };
+
+    const speakText = (text) => {
+        if ('speechSynthesis' in window) {
+            if (isSpeaking) {
+                window.speechSynthesis.cancel();
+                setIsSpeaking(false);
+                return;
+            }
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.onend = () => setIsSpeaking(false);
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+
+            setIsSpeaking(true);
+            window.speechSynthesis.speak(utterance);
+        }
+    };
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -22,23 +80,31 @@ export function ChatAssistant() {
         scrollToBottom();
     }, [messages]);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!input.trim() || isLoading) return;
+    const handleSubmit = async (e, overrideInput) => {
+        if (e) e.preventDefault();
+        const userMsg = overrideInput || input.trim();
 
-        const userMsg = input.trim();
+        if (!userMsg || isLoading) return;
+
         setMessages(prev => [...prev, { role: "user", text: userMsg }]);
         setInput("");
         setIsLoading(true);
 
         try {
-            const response = await fetch("http://127.0.0.1:5000/api/chat", {
+            // Use config for API URL
+            const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+            const response = await fetch(`${API_URL}/api/chat`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ question: userMsg })
             });
             const data = await response.json();
-            setMessages(prev => [...prev, { role: "assistant", text: data.answer }]);
+            const aiResponse = data.answer;
+            setMessages(prev => [...prev, { role: "assistant", text: aiResponse }]);
+
+            // Auto-speak response if voice was used (optional, maybe distracting)
+            // speakText(aiResponse); 
         } catch (error) {
             setMessages(prev => [...prev, { role: "assistant", text: "Sorry, I can't connect right now." }]);
         } finally {
@@ -87,22 +153,38 @@ export function ChatAssistant() {
                             {messages.map((msg, idx) => (
                                 <div
                                     key={idx}
-                                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                    className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
                                 >
-                                    <div
-                                        className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.role === 'user'
-                                            ? 'bg-blue-600 text-white rounded-br-none'
-                                            : 'bg-white border border-slate-200 text-slate-700 rounded-bl-none shadow-sm prose prose-sm max-w-none'
-                                            }`}
-                                    >
-                                        {msg.role === 'user' ? (
-                                            msg.text
-                                        ) : (
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {msg.text}
-                                            </ReactMarkdown>
-                                        )}
+                                    <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} w-full`}>
+                                        <div
+                                            className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.role === 'user'
+                                                ? 'bg-blue-600 text-white rounded-br-none'
+                                                : 'bg-white border border-slate-200 text-slate-700 rounded-bl-none shadow-sm prose prose-sm max-w-none'
+                                                }`}
+                                        >
+                                            {msg.role === 'user' ? (
+                                                msg.text
+                                            ) : (
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                    {msg.text}
+                                                </ReactMarkdown>
+                                            )}
+                                        </div>
                                     </div>
+                                    {/* Text to Speech Button for AI messages */}
+                                    {msg.role === 'assistant' && (
+                                        <button
+                                            onClick={() => speakText(msg.text)}
+                                            className="mt-1 ml-1 text-slate-400 hover:text-blue-600 transition-colors"
+                                            title="Read aloud"
+                                        >
+                                            {isSpeaking && window.speechSynthesis.speaking ? (
+                                                <Square className="h-3 w-3 fill-current" />
+                                            ) : (
+                                                <Volume2 className="h-3 w-3" />
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                             {isLoading && (
@@ -117,20 +199,41 @@ export function ChatAssistant() {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        {/* Input */}
+                        {/* Input Area - Integrated Design */}
                         <form onSubmit={handleSubmit} className="p-4 bg-white border-t border-slate-100">
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={input}
-                                    onChange={(e) => setInput(e.target.value)}
-                                    placeholder="Ask anything..."
-                                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                                <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+                            <div className="flex gap-2 items-center">
+                                <div className="relative flex-1">
+                                    <input
+                                        type="text"
+                                        value={input}
+                                        onChange={(e) => setInput(e.target.value)}
+                                        placeholder={isListening ? "Listening..." : "Ask anything..."}
+                                        className={`w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${isListening ? "ring-2 ring-red-400 placeholder-red-400 bg-red-50" : ""
+                                            }`}
+                                    />
+
+                                    <button
+                                        type="button"
+                                        onClick={toggleListening}
+                                        className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors ${isListening
+                                                ? "text-red-500 bg-red-100 animate-pulse"
+                                                : "text-slate-400 hover:text-blue-600 hover:bg-slate-100"
+                                            }`}
+                                        title={isListening ? "Stop Listening" : "Start Voice Input"}
+                                    >
+                                        {isListening ? <Square className="h-4 w-4 fill-current" /> : <Mic className="h-4 w-4" />}
+                                    </button>
+                                </div>
+
+                                <Button type="submit" size="icon" disabled={isLoading || (!input.trim() && !isListening)}>
                                     <Send className="h-4 w-4" />
                                 </Button>
                             </div>
+                            {isListening && (
+                                <p className="text-xs text-red-500 mt-1 animate-pulse ml-1">
+                                    ● Listening... Speak now
+                                </p>
+                            )}
                         </form>
                     </motion.div>
                 )}

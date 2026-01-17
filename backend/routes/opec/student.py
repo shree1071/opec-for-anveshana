@@ -47,3 +47,27 @@ def update_profile():
     except Exception as e:
         print(f"Error updating profile: {e}")
         return jsonify({"error": str(e)}), 500
+
+@student_bp.route('/profile', methods=['GET'])
+def get_profile():
+    try:
+        clerk_id = request.args.get('clerk_id')
+        
+        if not clerk_id:
+            return jsonify({"error": "Missing clerk_id"}), 400
+            
+        supabase = get_supabase_client()
+        if not supabase:
+             return jsonify({"error": "Supabase client not initialized"}), 500
+
+        # Get student details
+        res = supabase.table('students').select('*').eq('clerk_user_id', clerk_id).execute()
+        
+        if res.data:
+            return jsonify(res.data[0]), 200
+        else:
+            return jsonify({"error": "Student not found"}), 404
+        
+    except Exception as e:
+        print(f"Error fetching profile: {e}")
+        return jsonify({"error": str(e)}), 500

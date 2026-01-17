@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from "framer-motion";
-import { User as UserIcon, Sparkles, RefreshCw } from "lucide-react";
+import { User as UserIcon, Sparkles, RefreshCw, Volume2, Square } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import type { Message } from "../types";
 
@@ -12,6 +12,33 @@ interface MessageBubbleProps {
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ msg, index, onRetry, formatTimestamp }) => {
+    const [isSpeaking, setIsSpeaking] = useState(false);
+
+    useEffect(() => {
+        // Cleanup on unmount
+        return () => {
+            if (isSpeaking) {
+                window.speechSynthesis.cancel();
+            }
+        };
+    }, [isSpeaking]);
+
+    const toggleSpeech = () => {
+        if (!('speechSynthesis' in window)) return;
+
+        if (isSpeaking) {
+            window.speechSynthesis.cancel();
+            setIsSpeaking(false);
+        } else {
+            window.speechSynthesis.cancel(); // Stop any other speech
+            const utterance = new SpeechSynthesisUtterance(msg.content);
+            utterance.onend = () => setIsSpeaking(false);
+            utterance.onerror = () => setIsSpeaking(false);
+            setIsSpeaking(true);
+            window.speechSynthesis.speak(utterance);
+        }
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -65,6 +92,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ msg, in
                                 >
                                     <RefreshCw className="w-3 h-3" />
                                     Retry
+                                </button>
+                            )}
+
+                            {/* Text-to-Speech Button (AI only) */}
+                            {msg.role === 'assistant' && (
+                                <button
+                                    onClick={toggleSpeech}
+                                    className={`ml-2 transition-colors ${isSpeaking ? 'text-indigo-600 animate-pulse' : 'text-slate-300 hover:text-indigo-600'}`}
+                                    title={isSpeaking ? "Stop Reading" : "Read Aloud"}
+                                >
+                                    {isSpeaking ? <Square className="w-3 h-3 fill-current" /> : <Volume2 className="w-3 h-3" />}
                                 </button>
                             )}
                         </div>

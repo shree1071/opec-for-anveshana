@@ -9,16 +9,7 @@ export const Onboarding = () => {
     const { user, isLoaded, isSignedIn } = useUser();
     const navigate = useNavigate();
 
-    useEffect(() => {
-        if (isLoaded && !isSignedIn) {
-            navigate("/");
-        }
-    }, [isLoaded, isSignedIn, navigate]);
-
-    if (!isLoaded) {
-        return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-    }
-
+    // ALL HOOKS MUST BE BEFORE ANY EARLY RETURNS
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -31,6 +22,17 @@ export const Onboarding = () => {
         location: "",
         budget: ""
     });
+
+    useEffect(() => {
+        if (isLoaded && !isSignedIn) {
+            navigate("/");
+        }
+    }, [isLoaded, isSignedIn, navigate]);
+
+    // Early return AFTER all hooks
+    if (!isLoaded) {
+        return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    }
 
     const handleNext = () => setStep(step + 1);
 

@@ -17,7 +17,9 @@
     "vite": "^7.2.4"
   },
   "dependencies": {
+    "@11labs/react": "^0.2.0",
     "@clerk/clerk-react": "^5.59.3",
+    "@elevenlabs/client": "^0.13.0",
     "@supabase/supabase-js": "^2.90.1",
     "framer-motion": "^12.26.2",
     "jspdf": "^4.0.0",
