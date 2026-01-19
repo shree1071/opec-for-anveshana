@@ -54,6 +54,10 @@ def create_app():
     app.register_blueprint(chat_bp, url_prefix='/api/opec/chat')
     app.register_blueprint(opec_auth_bp, url_prefix='/api/opec/auth')
     
+    # MCP Blueprints
+    from routes.mcp_routes import mcp_bp
+    app.register_blueprint(mcp_bp, url_prefix='/api/mcp')
+
     @app.route('/')
     def health_check():
         return {"status": "CareerPath API is running", "version": "1.0.0"}

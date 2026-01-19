@@ -14,7 +14,7 @@ export const Button: React.FC<ButtonProps & HTMLMotionProps<"button">> = ({
     className = "",
     ...props
 }) => {
-    const baseStyle = "px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2";
+    const baseStyle = "px-6 py-3 rounded-full font-semibold transition-all duration-200 flex items-center justify-center gap-2";
     const variants = {
         primary: "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-blue-500/30",
         secondary: "bg-white text-slate-800 border border-slate-200 hover:bg-slate-50 hover:border-slate-300",

@@ -11,7 +11,8 @@ def send_message():
         data = request.json
         clerk_id = data.get('clerk_id')
         message = data.get('message')
-        print(f"DEBUG: Processing message from clerk_id: {clerk_id}")
+        use_search = data.get('use_search', False) # Default to False: Standard Chat
+        print(f"DEBUG: Processing message from clerk_id: {clerk_id}, use_search={use_search}")
         
         if not clerk_id or not message:
              return jsonify({"error": "Missing clerk_id or message"}), 400
@@ -88,7 +89,7 @@ def send_message():
             # Update user message with patterns
             supabase.table('messages').update({"patterns": pattern_ids}).eq('id', user_msg_id).execute()
             
-        ai_response_text = generate_chat_response(message, context_messages, active_patterns, student_context)
+        ai_response_text = generate_chat_response(message, context_messages, active_patterns, student_context, use_search=use_search)
         
         # 6. Save AI Message
         ai_msg = {

@@ -48,6 +48,33 @@ export const InsightsSidebar: React.FC<InsightsSidebarProps> = ({
 
             <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
                 <div className="space-y-6">
+                    {/* Market Pulse Widget */}
+                    <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-4 rounded-xl border border-indigo-100 shadow-sm">
+                        <h4 className="font-semibold text-indigo-900 mb-2 flex items-center justify-between">
+                            <span className="flex items-center gap-2">
+                                <span className="relative flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                </span>
+                                Market Pulse
+                            </span>
+                            <span className="text-[10px] bg-white/50 px-2 py-0.5 rounded text-indigo-600 border border-indigo-100">LIVE</span>
+                        </h4>
+                        <div className="space-y-3">
+                            <p className="text-xs text-indigo-800/80 leading-relaxed">
+                                We're tracking <span className="font-bold text-indigo-700">120+ new jobs</span> in your domain today.
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => window.dispatchEvent(new CustomEvent('open-job-market'))}
+                                    className="flex-1 bg-white hover:bg-indigo-50 text-indigo-600 text-xs font-semibold py-2 px-3 rounded-lg border border-indigo-200 transition-colors shadow-sm flex items-center justify-center gap-2"
+                                >
+                                    View Opportunities
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Action Items Card */}
                     <div className="bg-gradient-to-br from-violet-50 to-fuchsia-50 p-4 rounded-xl border border-violet-100 shadow-sm">
                         <h4 className="font-semibold text-violet-900 mb-3 flex items-center gap-2">

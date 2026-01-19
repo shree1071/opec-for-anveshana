@@ -72,14 +72,14 @@ def get_cache_key(message, context_messages):
     combined = f"{message}_{context_str}"
     return hashlib.md5(combined.encode()).hexdigest()
 
-def generate_chat_response(message, context_messages=None, active_patterns=None, student_context=None):
+def generate_chat_response(message, context_messages=None, active_patterns=None, student_context=None, use_search=False):
     """
     Generate a chat response using Gemini with pattern detection integration.
     Now includes student context from onboarding for personalization.
     Uses API key rotation for better quota management.
     """
-    # Generate cache key
-    cache_key = hashlib.md5(f"{message}{json.dumps(context_messages or [])}".encode()).hexdigest()
+    # Generate cache key (include use_search in key)
+    cache_key = hashlib.md5(f"{message}{json.dumps(context_messages or [])}{use_search}".encode()).hexdigest()
     
     # Check cache first
     if cache_key in response_cache:
@@ -96,10 +96,26 @@ def generate_chat_response(message, context_messages=None, active_patterns=None,
     if student_context:
         student_context_str = "\n".join([f"{k}: {v}" for k, v in student_context.items() if v])
     
+    # MCP Context Injection
+    mcp_context = ""
+    if use_search:
+        try:
+            # Inline import to prevent circular dependency
+            from services.ai_engine import enhance_with_mcp_data
+            print(f"DEBUG: Search Mode ON. Fetching MCP data for: {message}")
+            mcp_data = enhance_with_mcp_data(message)
+            if mcp_data:
+                mcp_context = f"\n\n[REAL-TIME SEARCH RESULT]:\n{json.dumps(mcp_data, indent=2)}\n\nINSTRUCTION: Use the above real-time data to answer the user's question accurately. Cite the source if available (e.g. 'According to recent job postings...')."
+                print("DEBUG: MCP Data found and injected.")
+            else:
+                print("DEBUG: No relevant MCP data found.")
+        except Exception as e:
+            print(f"ERROR: MCP Search failed: {e}")
+
     system_prompt = OPEC_ASSISTANT_PROMPT.format(
         pattern_interventions=pattern_text,
         student_context=student_context_str
-    )
+    ) + mcp_context
     
     # Build chat history
     history = [

@@ -8,9 +8,14 @@ interface VoiceModeProps {
     isOpen: boolean;
     onClose: () => void;
     userData?: any;
+    initialContext?: {
+        interviewMode?: boolean;
+        company?: string;
+        role?: string;
+    };
 }
 
-export const VoiceMode: React.FC<VoiceModeProps> = ({ isOpen, onClose, userData }) => {
+export const VoiceMode: React.FC<VoiceModeProps> = ({ isOpen, onClose, userData, initialContext }) => {
     const [hasPermission, setHasPermission] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [connectionId, setConnectionId] = useState<string | null>(null);
@@ -56,11 +61,17 @@ export const VoiceMode: React.FC<VoiceModeProps> = ({ isOpen, onClose, userData 
     useEffect(() => {
         const connectToAgent = async () => {
             if (isOpen && hasPermission && status === 'disconnected' && !error) {
-                const agentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID;
-                console.log('Environment check - VITE_ELEVENLABS_AGENT_ID:', agentId);
+                // Determine which agent to use
+                const isInterview = initialContext?.interviewMode;
+                const defaultAgentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID;
+                const interviewAgentId = import.meta.env.VITE_ELEVENLABS_INTERVIEW_AGENT_ID;
+
+                const agentId = isInterview && interviewAgentId ? interviewAgentId : defaultAgentId;
+
+                console.log('Voice Mode Init:', { isInterview, agentId });
 
                 if (!agentId || agentId === 'undefined') {
-                    setError("Voice Agent not configured. Add VITE_ELEVENLABS_AGENT_ID to .env and restart the server.");
+                    setError("Voice Agent not configured. Add AGENT_ID to .env.");
                     return;
                 }
 
@@ -71,13 +82,17 @@ export const VoiceMode: React.FC<VoiceModeProps> = ({ isOpen, onClose, userData 
                     const conversationConfig = {
                         agentId,
                         dynamicVariables: {
-                            userName: userData?.name || "Student",
+                            userName: userData?.firstName || userData?.fullName || userData?.name || "Student",
                             userInterests: userData?.interests || "general career exploration",
                             educationLevel: userData?.education_level || "unknown",
                             grade: userData?.grade_or_year || "unknown",
                             stream: userData?.stream_or_branch || "unknown",
                             careerGoals: userData?.goals || "undecided",
                             recent_mood: userData?.recent_mood || "neutral",
+                            // Interview Mode Context
+                            interview_mode: initialContext?.interviewMode ? "true" : "false",
+                            target_company: initialContext?.company || "general",
+                            target_role: initialContext?.role || "general",
                         }
                     };
 

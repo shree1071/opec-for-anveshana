@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowRight, Brain, MessageSquare, TrendingUp, Sparkles, Target, Zap, Users, CheckCircle, ChevronRight, Play } from "lucide-react";
+import { ArrowRight, Brain, MessageSquare, TrendingUp, Sparkles, Target, Zap, Users, CheckCircle, ChevronRight, Play, Mic } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { SignedIn, SignedOut, SignUpButton } from "@clerk/clerk-react";
@@ -257,105 +257,120 @@ export function LandingPage() {
                 <div className="text-center mb-12">
                     <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6">Built for Clarity. <br /> Designed for Action.</h2>
                     <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-                        Most tools give generic advice. We built a system that understands <em>you</em>.
+                        Most tools give generic advice. We built a system that understands <em>you</em> and connects you to the <em>real world</em>.
                     </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[400px]">
-                    {/* Large Card - Phase 1 */}
+                    {/* Large Card - Live Job Market */}
                     <motion.div
                         whileHover={{ scale: 1.02 }}
-                        className="md:col-span-2 relative bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-8 overflow-hidden text-white flex flex-col justify-between shadow-2xl shadow-indigo-200"
+                        className="md:col-span-2 relative bg-white border border-slate-200 rounded-3xl p-8 overflow-hidden flex flex-col justify-between shadow-xl"
                     >
                         <div className="relative z-10">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold mb-6 border border-white/10">
-                                <MessageSquare className="w-3 h-3" /> Phase 1: Reflection
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold mb-6">
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                </span>
+                                Live Market Intelligence
                             </div>
-                            <h3 className="text-4xl font-bold mb-4">Deep Dive Discovery</h3>
-                            <p className="text-lg text-indigo-100 max-w-md">
-                                An empathetic AI listener that helps you unpack your chaotic thoughts and feelings about your career, converting confusion into structured insights.
+                            <h3 className="text-4xl font-bold text-slate-900 mb-4">Real-Time Job Data</h3>
+                            <p className="text-lg text-slate-500 max-w-md">
+                                Don't plan in a vacuum. See live job openings, salary trends, and skill demands directly from the market. Powered by Adzuna.
                             </p>
                         </div>
-                        <div className="absolute right-0 bottom-0 w-3/4 h-3/4 bg-white/10 rounded-tl-3xl backdrop-blur-sm border-t border-l border-white/10 p-6 translate-x-1/4 translate-y-1/4">
-                            <div className="space-y-4">
-                                <div className="flex gap-4 items-center">
-                                    <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center font-bold">AI</div>
-                                    <div className="bg-white/20 p-3 rounded-xl rounded-tl-none text-sm">What excites you most about technology?</div>
+
+                        {/* Mock UI for Job Cards */}
+                        <div className="absolute right-0 bottom-0 w-3/4 h-3/4 bg-slate-50 rounded-tl-3xl border-t border-l border-slate-100 p-6 translate-x-1/4 translate-y-1/4">
+                            <div className="space-y-3">
+                                <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between">
+                                    <div>
+                                        <div className="font-bold text-slate-800">React Developer</div>
+                                        <div className="text-xs text-slate-500">Google • Bangalore</div>
+                                    </div>
+                                    <div className="text-sm font-bold text-green-600">₹18L - ₹24L</div>
                                 </div>
-                                <div className="flex gap-4 items-center justify-end">
-                                    <div className="bg-indigo-800/80 p-3 rounded-xl rounded-tr-none text-sm">I love building visual things...</div>
-                                    <div className="w-10 h-10 rounded-full bg-slate-900 border border-white/20 flex items-center justify-center font-bold">Me</div>
+                                <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between opacity-70">
+                                    <div>
+                                        <div className="font-bold text-slate-800">Frontend Engineer</div>
+                                        <div className="text-xs text-slate-500">Swiggy • Remote</div>
+                                    </div>
+                                    <div className="text-sm font-bold text-green-600">₹15L - ₹22L</div>
                                 </div>
                             </div>
                         </div>
                     </motion.div>
 
-                    {/* Small Card - Analyzers */}
+                    {/* Small Card - Mock Interview */}
                     <motion.div
                         whileHover={{ scale: 1.02 }}
-                        className="bg-white rounded-3xl p-8 border border-slate-200 shadow-xl flex flex-col justify-between"
+                        className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-3xl p-8 text-white shadow-xl flex flex-col justify-between overflow-hidden relative"
                     >
-                        <div>
-                            <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center mb-6 text-amber-600">
-                                <Sparkles className="w-6 h-6" />
+                        <div className="relative z-10">
+                            <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6">
+                                <Mic className="w-6 h-6 text-white" />
                             </div>
-                            <h3 className="text-2xl font-bold text-slate-900 mb-2">Hidden Patterns</h3>
-                            <p className="text-slate-500">
-                                We connect dots you didn't know existed, finding your unique strengths.
+                            <h3 className="text-2xl font-bold mb-2">AI Mock Interviews</h3>
+                            <p className="text-indigo-100 text-sm">
+                                Practice with a Senior Dev AI before the real thing. Company-specific prep.
                             </p>
                         </div>
-                        <div className="mt-6 flex flex-wrap gap-2">
-                            {['Creative', 'Analytical', 'Leader'].map(tag => (
-                                <span key={tag} className="px-3 py-1 bg-slate-100 rounded-lg text-xs font-medium text-slate-600 border border-slate-200">{tag}</span>
+
+                        {/* Audio Wave Visual */}
+                        <div className="flex items-end gap-1 h-12 mt-4 opacity-50">
+                            {[40, 70, 30, 80, 50, 90, 40, 60, 30].map((h, i) => (
+                                <div key={i} className="w-2 bg-white rounded-full animate-pulse" style={{ height: `${h}%`, animationDelay: `${i * 0.1}s` }} />
                             ))}
                         </div>
                     </motion.div>
 
-                    {/* Small Card - Stats */}
+                    {/* Small Card - Career Simulation */}
                     <motion.div
                         whileHover={{ scale: 1.02 }}
-                        className="bg-white rounded-3xl p-8 border border-slate-200 shadow-xl flex flex-col justify-between"
+                        className="bg-slate-900 rounded-3xl p-8 border border-slate-800 shadow-xl flex flex-col justify-between text-white"
                     >
                         <div>
-                            <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center mb-6 text-green-600">
-                                <TrendingUp className="w-6 h-6" />
+                            <div className="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center mb-6">
+                                <Zap className="w-6 h-6 text-purple-400" />
                             </div>
-                            <h3 className="text-2xl font-bold text-slate-900 mb-2">Real Market Data</h3>
-                            <p className="text-slate-500">
-                                Salary trends and growth projections specific to the Indian market.
+                            <h3 className="text-2xl font-bold mb-2">Career Simulator</h3>
+                            <p className="text-slate-400 text-sm">
+                                Fast-forward 5 years. visualize your path, risks, and rewards.
                             </p>
                         </div>
-                        <div className="mt-4">
-                            <div className="flex items-end gap-2">
-                                <span className="text-4xl font-bold text-slate-900">₹25L</span>
-                                <span className="text-sm text-green-600 font-semibold mb-2">+40% YoY</span>
-                            </div>
-                            <div className="w-full h-2 bg-slate-100 rounded-full mt-2 overflow-hidden">
-                                <div className="w-3/4 h-full bg-green-500 rounded-full"></div>
-                            </div>
+                        <div className="mt-4 flex -space-x-2">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className={`w-8 h-8 rounded-full border-2 border-slate-900 flex items-center justify-center text-[10px] font-bold ${i === 1 ? 'bg-blue-500' : i === 2 ? 'bg-purple-500' : 'bg-pink-500'}`}>
+                                    {2024 + i}
+                                </div>
+                            ))}
+                            <div className="w-8 h-8 rounded-full border-2 border-slate-900 bg-slate-700 flex items-center justify-center text-[10px]">+2</div>
                         </div>
                     </motion.div>
 
-                    {/* Large Card - Phase 2 */}
+                    {/* Large Card - Deep Discovery */}
                     <motion.div
                         whileHover={{ scale: 1.02 }}
-                        className="md:col-span-2 relative bg-slate-900 rounded-3xl p-8 overflow-hidden text-white flex flex-col justify-between shadow-2xl shadow-slate-200"
+                        className="md:col-span-2 relative bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-3xl p-8 overflow-hidden flex flex-col justify-between shadow-lg"
                     >
                         <div className="relative z-10">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-semibold mb-6 border border-white/10">
-                                <Zap className="w-3 h-3" /> Phase 2: Action
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white rounded-full text-xs font-semibold mb-6 border border-indigo-100 text-indigo-600">
+                                <MessageSquare className="w-3 h-3" /> Deep Discovery
                             </div>
-                            <h3 className="text-4xl font-bold mb-4">The Career Simulator 2.0</h3>
-                            <p className="text-lg text-slate-400 max-w-md">
-                                Simulate your next 5 years. See the skills you need, the roles you can take, and the money you can make.
+                            <h3 className="text-4xl font-bold text-slate-900 mb-4">Unpack Your Potential</h3>
+                            <p className="text-lg text-slate-600 max-w-md">
+                                An empathetic AI listener that helps you understand your own core values and hidden strengths through deep conversation.
                             </p>
                         </div>
-                        {/* Visual Abstract Graph */}
-                        <div className="absolute right-0 bottom-0 w-2/3 h-2/3">
-                            <svg viewBox="0 0 200 100" className="w-full h-full opacity-20">
-                                <path d="M0,100 Q50,50 100,80 T200,20" fill="none" stroke="white" strokeWidth="4" />
-                                <path d="M0,100 Q50,70 100,90 T200,40" fill="none" stroke="indigo" strokeWidth="4" />
-                            </svg>
+                        <div className="absolute right-0 bottom-0 w-1/2 h-full bg-gradient-to-l from-white/50 to-transparent">
+                            {/* Abstract Chat Bubbles */}
+                            <div className="absolute top-1/4 right-10 bg-white p-3 rounded-2xl rounded-tr-none shadow-md border border-indigo-50 text-xs text-slate-600 w-48">
+                                "I feel stuck between coding and design..."
+                            </div>
+                            <div className="absolute top-1/2 right-20 bg-indigo-600 p-3 rounded-2xl rounded-tl-none shadow-md text-xs text-white w-52">
+                                "It sounds like you might enjoy a Product Design role. Let's explore that path."
+                            </div>
                         </div>
                     </motion.div>
                 </div>

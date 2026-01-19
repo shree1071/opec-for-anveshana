@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useUser } from "@clerk/clerk-react";
+import { useUser, SignIn } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button, Card } from "../../components/ui";
@@ -23,13 +23,20 @@ export const Onboarding = () => {
         budget: ""
     });
 
-    useEffect(() => {
-        if (isLoaded && !isSignedIn) {
-            navigate("/");
-        }
-    }, [isLoaded, isSignedIn, navigate]);
+    if (isLoaded && !isSignedIn) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+                <Card className="p-8 max-w-md w-full text-center">
+                    <h2 className="text-2xl font-bold mb-4">Please Sign In</h2>
+                    <p className="text-slate-600 mb-6">You need to be signed in to access the onboarding.</p>
+                    <div className="flex justify-center">
+                        <SignIn />
+                    </div>
+                </Card>
+            </div>
+        );
+    }
 
-    // Early return AFTER all hooks
     if (!isLoaded) {
         return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
     }

@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser } from "@clerk/clerk-react";
 import { Button } from "../../components/ui";
-import { Brain, Smile, Meh, Frown, AlertCircle, PanelRightOpen, ArrowRight, Minimize2, Maximize2, FileText, Trash2, Download, Activity, Mic, Square, Headphones } from "lucide-react";
+import { Brain, Smile, Meh, Frown, AlertCircle, PanelRight, PanelRightClose, ArrowRight, Minimize2, Maximize2, FileText, Trash2, Download, Activity, Mic, Square, Headphones, Briefcase, Globe } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageBubble } from "./components/MessageBubble";
 import { InsightsSidebar } from "./components/InsightsSidebar";
 import { CommandPalette, type CommandAction } from "./components/CommandPalette";
 import { VoiceMode } from "./components/VoiceMode";
+import { InterviewSetupModal } from "./components/InterviewSetupModal";
+import LiveJobMarket from "../../components/LiveJobMarket";
 
 import type { Message, ToastMessage } from "./types";
 
@@ -23,17 +25,29 @@ export const Chat = () => {
     const [isResizing, setIsResizing] = useState(false);
     const [detectedPatterns, setDetectedPatterns] = useState<string[]>([]);
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
-    const [isOnline, setIsOnline] = useState(true);
     const [isZenMode, setIsZenMode] = useState(false);
     const [generatingReport, setGeneratingReport] = useState(false);
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [isVoiceModeOpen, setIsVoiceModeOpen] = useState(false);
+    const [isInterviewSetupOpen, setIsInterviewSetupOpen] = useState(false);
+    const [isJobMarketOpen, setIsJobMarketOpen] = useState(false);
+    const [isSearchMode, setIsSearchMode] = useState(false);
+    const [voiceContext, setVoiceContext] = useState<{ interviewMode?: boolean; company?: string; role?: string }>({});
+
+    const handleInterviewStart = (company: string, role: string) => {
+        setVoiceContext({
+            interviewMode: true,
+            company,
+            role
+        });
+        setIsJobMarketOpen(false);
+        setIsVoiceModeOpen(true);
+    };
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
-    const sidebarRef = useRef<HTMLDivElement>(null);
     const recognitionRef = useRef<any>(null);
 
     // --- Voice Logic ---
@@ -129,6 +143,12 @@ export const Chat = () => {
             });
         }
     };
+
+    useEffect(() => {
+        const handleOpenJobMarket = () => setIsJobMarketOpen(true);
+        window.addEventListener('open-job-market', handleOpenJobMarket);
+        return () => window.removeEventListener('open-job-market', handleOpenJobMarket);
+    }, []);
 
     useEffect(() => {
         scrollToBottom();
@@ -229,10 +249,15 @@ export const Chat = () => {
             label: isSidebarOpen ? 'Close Sidebar' : 'Open Sidebar',
             icon: Activity,
             action: () => setIsSidebarOpen(prev => !prev)
+        },
+        {
+            id: 'open-job-market',
+            label: 'Open Live Job Market',
+            icon: Briefcase,
+            shortcut: 'J',
+            action: () => setIsJobMarketOpen(true)
         }
     ];
-
-    const [studentProfile, setStudentProfile] = useState<any>(null);
 
     // --- Data Loading & Smart Context ---
     useEffect(() => {
@@ -249,8 +274,8 @@ export const Chat = () => {
                 ]);
 
                 if (profileRes.ok) {
-                    const profileData = await profileRes.json();
-                    setStudentProfile(profileData);
+                    await profileRes.json();
+                    // Profile data fetched but not stored in local state as it's not currently used
                 }
 
                 if (historyRes.ok) {
@@ -326,12 +351,13 @@ export const Chat = () => {
         const textToSend = messageText || inputValue;
         if (!textToSend.trim()) return;
 
-        if (!isOnline) {
+        if (!navigator.onLine) {
             showToast('Cannot send message while offline', 'error');
             return;
         }
 
         const timestamp = Date.now();
+        // Auto-scroll to bottom
         const userMsg: Message = {
             role: 'user',
             content: textToSend,
@@ -362,7 +388,8 @@ export const Chat = () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     clerk_id: user?.id,
-                    message: textToSend
+                    message: textToSend,
+                    use_search: isSearchMode
                 }),
                 signal: abortControllerRef.current.signal
             });
@@ -421,13 +448,6 @@ export const Chat = () => {
         }
     };
 
-    const getScoreColor = (score: number) => {
-        if (score >= 75) return 'from-green-500 to-emerald-600';
-        if (score >= 50) return 'from-blue-500 to-indigo-500';
-        if (score >= 25) return 'from-yellow-500 to-orange-500';
-        return 'from-slate-400 to-slate-500';
-    };
-
     if (initialLoading) {
         return (
             <div className="flex items-center justify-center h-[calc(100vh-64px)] bg-slate-50">
@@ -445,13 +465,19 @@ export const Chat = () => {
             {/* Voice Mode Overlay */}
             <VoiceMode
                 isOpen={isVoiceModeOpen}
-                onClose={() => setIsVoiceModeOpen(false)}
-                userData={{
-                    ...studentProfile,
-                    name: studentProfile?.name || user?.firstName || "Student",
-                    interests: studentProfile?.interests || detectedPatterns.join(", ") || "general career exploration",
-                    recent_mood: currentMood
+                onClose={() => {
+                    setIsVoiceModeOpen(false);
+                    setVoiceContext({}); // Reset context on close
                 }}
+                userData={user}
+                initialContext={voiceContext}
+            />
+
+            <InterviewSetupModal
+                isOpen={isInterviewSetupOpen}
+                onClose={() => setIsInterviewSetupOpen(false)}
+                onStart={handleInterviewStart}
+                onBrowseJobs={() => setIsJobMarketOpen(true)}
             />
 
             <CommandPalette
@@ -471,13 +497,23 @@ export const Chat = () => {
                         className="fixed top-4 right-4 z-50 bg-white/50 hover:bg-white/80 p-2 rounded-full transition-colors backdrop-blur-sm border border-slate-200/50"
                         title="Exit Zen Mode"
                     >
-                        <PanelRightOpen className="w-5 h-5 text-slate-600" />
+                        <PanelRight className="w-5 h-5 text-slate-600" />
                     </motion.button>
                 )}
             </AnimatePresence>
 
             {/* Main Chat Column */}
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden relative">
+                {/* Persistent Voice Mode Toggle (Top Right) */}
+                <div className="absolute top-4 right-6 z-10">
+                    <button
+                        onClick={() => setIsInterviewSetupOpen(true)}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-white/80 backdrop-blur-sm border border-indigo-100 text-indigo-600 rounded-full shadow-sm hover:shadow-md hover:bg-indigo-50 transition-all text-sm font-medium"
+                    >
+                        <Headphones className="w-4 h-4" />
+                        <span>Interview Mode</span>
+                    </button>
+                </div>
                 {/* Messages Area */}
                 <div
                     ref={chatContainerRef}
@@ -492,6 +528,24 @@ export const Chat = () => {
                                 </div>
                                 <h2 className="font-serif text-3xl text-slate-800">Hi! How can I help you today?</h2>
                                 <p className="text-slate-500 max-w-md mx-auto">I'm here to help you gain career clarity. We can explore your strengths, options, or just chat.</p>
+
+                                {/* New User Feature Highlight */}
+                                <motion.button
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    whileHover={{ scale: 1.05 }}
+                                    onClick={() => setIsInterviewSetupOpen(true)}
+                                    className="mt-6 mx-auto flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all group"
+                                >
+                                    <div className="p-1.5 bg-white/20 rounded-full animate-pulse">
+                                        <Headphones className="w-5 h-5" />
+                                    </div>
+                                    <div className="text-left">
+                                        <p className="text-xs font-semibold text-indigo-100 uppercase tracking-wider">New Feature</p>
+                                        <p className="font-bold">Try AI Interview Mode</p>
+                                    </div>
+                                    <ArrowRight className="w-4 h-4 opacity-70 group-hover:translate-x-1 transition-transform" />
+                                </motion.button>
                             </div>
                         )}
 
@@ -507,13 +561,13 @@ export const Chat = () => {
                             ))}
                         </AnimatePresence>
 
-                        {/* Starburst Loading Animation */}
+                        {/* Claude-style Typing Indicator */}
                         {loading && (
-                            <div className="flex justify-start pl-2 py-4">
-                                <div className="w-14 h-14 text-[#d97757] animate-[spin_4s_linear_infinite]">
-                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-sm">
-                                        <path d="M12 2L14.8 8.4L21.5 9.8L16.2 14.1L18 20.8L12 17L6 20.8L7.8 14.1L2.5 9.8L9.2 8.4L12 2Z" fill="currentColor" />
-                                    </svg>
+                            <div className="flex justify-start py-4 pl-1">
+                                <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-1.5 w-fit">
+                                    <div className="w-2 h-2 rounded-full bg-[#d97757] animate-typing-dot" style={{ animationDelay: '0s' }}></div>
+                                    <div className="w-2 h-2 rounded-full bg-[#d97757] animate-typing-dot" style={{ animationDelay: '0.2s' }}></div>
+                                    <div className="w-2 h-2 rounded-full bg-[#d97757] animate-typing-dot" style={{ animationDelay: '0.4s' }}></div>
                                 </div>
                             </div>
                         )}
@@ -531,7 +585,7 @@ export const Chat = () => {
                             onKeyDown={handleKeyDown}
                             placeholder={isListening ? "Listening..." : "Reply..."}
                             className={`w-full pl-4 pr-16 py-3 bg-transparent border-0 focus:ring-0 resize-none h-16 max-h-48 text-lg text-slate-800 placeholder:font-normal leading-relaxed scrollbar-hide ${isListening ? 'placeholder:text-red-400' : 'placeholder:text-slate-400'}`}
-                            disabled={!isOnline}
+                            disabled={!navigator.onLine}
                         />
 
                         <div className="flex items-center justify-between px-2 pb-1">
@@ -566,9 +620,26 @@ export const Chat = () => {
                                 {/* Divider */}
                                 <div className="w-px h-6 bg-slate-200" />
 
+                                <button
+                                    onClick={() => setIsJobMarketOpen(true)}
+                                    className="p-2 rounded-xl transition-all text-blue-500 hover:bg-blue-50"
+                                    title="Open Live Job Market"
+                                >
+                                    <Briefcase className="w-5 h-5" />
+                                </button>
+
+                                {/* Search/MCP Mode Toggle */}
+                                <button
+                                    onClick={() => setIsSearchMode(!isSearchMode)}
+                                    className={`p-2 rounded-xl transition-all ${isSearchMode ? 'bg-indigo-100 text-indigo-600 ring-2 ring-indigo-200' : 'text-slate-400 hover:bg-slate-100'}`}
+                                    title={isSearchMode ? "Web Search Active" : "Enable Web Search"}
+                                >
+                                    <Globe className={`w-5 h-5 ${isSearchMode ? 'animate-pulse' : ''}`} />
+                                </button>
+
                                 {/* Voice Agent Button - Full Conversation */}
                                 <button
-                                    onClick={() => setIsVoiceModeOpen(true)}
+                                    onClick={() => setIsInterviewSetupOpen(true)}
                                     className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 rounded-xl shadow-lg shadow-emerald-500/30 transition-all hover:scale-105"
                                     title="Start Voice Agent Conversation"
                                 >
@@ -579,7 +650,7 @@ export const Chat = () => {
                                 {/* Send Button */}
                                 <Button
                                     onClick={() => handleSendMessage()}
-                                    disabled={!inputValue.trim() || loading || !isOnline}
+                                    disabled={!inputValue.trim() || loading || !navigator.onLine}
                                     className={`h-10 w-10 !p-0 rounded-xl flex items-center justify-center transition-all duration-200 ${inputValue.trim() ? 'bg-pink-600 hover:bg-pink-700 text-white shadow-md transform hover:scale-105' : 'bg-pink-100 text-pink-300 cursor-not-allowed'}`}
                                 >
                                     <ArrowRight className="w-5 h-5" />
@@ -634,20 +705,46 @@ export const Chat = () => {
                 )}
             </AnimatePresence>
 
+            {/* Live Job Market Overlay */}
+            <AnimatePresence>
+                {isJobMarketOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                    >
+                        <div className="bg-white w-full max-w-4xl h-[80vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col relative">
+                            <button
+                                onClick={() => setIsJobMarketOpen(false)}
+                                className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors z-10"
+                            >
+                                <PanelRightClose className="w-5 h-5 text-slate-600" />
+                            </button>
+                            <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                <LiveJobMarket onInterviewStart={handleInterviewStart} />
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Resizable Sidebar */}
-            {!isZenMode && (
-                <InsightsSidebar
-                    show={isSidebarOpen}
-                    onClose={() => setIsSidebarOpen(false)}
-                    messagesCount={messages.length}
-                    clarityScore={clarityScore}
-                    detectedPatterns={detectedPatterns}
-                    onExport={exportConversation}
-                    width={sidebarWidth}
-                    onGenerateReport={generateReport}
-                    isGeneratingReport={generatingReport}
-                />
-            )}
-        </div>
+            {
+                !isZenMode && (
+                    <InsightsSidebar
+                        show={isSidebarOpen}
+                        onClose={() => setIsSidebarOpen(false)}
+                        messagesCount={messages.length}
+                        clarityScore={clarityScore}
+                        detectedPatterns={detectedPatterns}
+                        onExport={exportConversation}
+                        width={sidebarWidth}
+                        onGenerateReport={generateReport}
+                        isGeneratingReport={generatingReport}
+                    />
+                )
+            }
+        </div >
     );
 };

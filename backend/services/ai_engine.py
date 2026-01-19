@@ -209,13 +209,23 @@ def chat_with_coach(question, user_context=None):
         if user_context:
             context_str = f"\n\nUser's Career Roadmap Context:\n{json.dumps(user_context, indent=2)}"
 
+
+        # Enrich with real-time MCP data if relevant
+        mcp_data = enhance_with_mcp_data(question)
+        mcp_context = ""
+        if mcp_data:
+            mcp_context = f"\n\nREAL-TIME MARKET DATA (Verified Live): {json.dumps(mcp_data)}"
+
         prompt = f"""You are an elite AI Career Coach helping a user with their career path.
 Answer their question with wisdom, strategy, and encouragement.
 
 User Question: {question}
 {context_str}
+{mcp_context}
 
-Provide a helpful, actionable response. Be specific and reference their roadmap if relevant."""
+Provide a helpful, actionable response. Be specific and reference their roadmap if relevant.
+If real-time market data is provided, cite it explicitly (e.g., "I see 12 active job openings for this role right now...")."""
+
 
         try:
             response = call_gemini_with_retry(client, valid_model, prompt)
@@ -227,3 +237,54 @@ Provide a helpful, actionable response. Be specific and reference their roadmap 
     except Exception as e:
         logger.error(f"Error during Chat: {e}")
         return "I'm having trouble connecting right now. Please try again!"
+
+def enhance_with_mcp_data(question):
+    """
+    Check if question requires live data and fetch it using MCP tools
+    """
+    from mcp.tools import MCPJobTools
+    
+    question_lower = question.lower()
+    
+    # Check for job search intent
+    if any(k in question_lower for k in ['job', 'hiring', 'vacancy', 'opening', 'work']):
+        # Extract location
+        locations = ['bangalore', 'mumbai', 'delhi', 'hyderabad', 'chennai', 'pune', 'india']
+        loc = 'bangalore'
+        for l in locations:
+            if l in question_lower:
+                loc = l
+                break
+        
+        # Simple extraction
+        query = question_lower.replace('jobs', '').replace('hiring', '').replace('in', '').replace(loc, '').strip()
+        if not query: 
+            query = "software engineer"
+            
+        result = MCPJobTools.search_live_jobs(query, loc)
+        if result.get('status') == 'success':
+            return result.get('data')
+            
+    # Check for salary intent
+    elif 'salary' in question_lower or 'earn' in question_lower or 'pay' in question_lower:
+        query = question_lower.replace('salary', '').replace('much', '').replace('does', '').strip()
+        result = MCPJobTools.get_salary_data(query)
+        if result.get('status') == 'success':
+            return result.get('data')
+
+    # Check for News/Trends intent
+    elif any(k in question_lower for k in ['news', 'trend', 'latest', 'happening', 'update']):
+        query = question_lower.replace('news', '').replace('latest', '').replace('trends', '').strip()
+        result = MCPJobTools.get_industry_news(query)
+        if result.get('status') == 'success':
+            return result.get('data')
+
+    # Check for Learning/Video intent
+    elif any(k in question_lower for k in ['learn', 'how to', 'tutorial', 'video', 'course', 'guide']):
+        query = question_lower.replace('learn', '').replace('tutorial', '').replace('video', '').strip()
+        result = MCPJobTools.find_learning_videos(query)
+        if result.get('status') == 'success':
+            return result.get('data')
+            
+    return None
+
