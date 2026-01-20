@@ -244,3 +244,80 @@ def health_check():
         "adzuna_configured": has_credentials,
         "cache_size": len(client._cache) if hasattr(client, '_cache') else 0
     })
+
+
+@mcp_bp.route('/news', methods=['POST'])
+def get_industry_news():
+    """
+    Get career/industry news for a field
+    
+    POST /api/mcp/news
+    Body: {
+        "field": "software engineering",
+        "max_results": 5
+    }
+    """
+    try:
+        from mcp.news_api import search_news
+        
+        data = request.json or {}
+        field = data.get('field', 'technology careers')
+        max_results = data.get('max_results', 5)
+        
+        # Construct a career-focused query
+        query = f"{field} careers jobs trends India"
+        
+        result = search_news(query, max_results=max_results)
+        
+        return jsonify({
+            "success": True,
+            "field": field,
+            **result
+        })
+        
+    except Exception as e:
+        logger.error(f"News API error: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "articles": []
+        }), 500
+
+
+@mcp_bp.route('/videos', methods=['POST'])
+def get_learning_videos():
+    """
+    Get learning videos for a skill/topic
+    
+    POST /api/mcp/videos
+    Body: {
+        "skill": "react programming",
+        "max_results": 5
+    }
+    """
+    try:
+        from mcp.youtube_api import search_videos
+        
+        data = request.json or {}
+        skill = data.get('skill', 'programming')
+        max_results = data.get('max_results', 5)
+        
+        # Construct a learning-focused query
+        query = f"learn {skill} tutorial beginner"
+        
+        result = search_videos(query, max_results=max_results)
+        
+        return jsonify({
+            "success": True,
+            "skill": skill,
+            **result
+        })
+        
+    except Exception as e:
+        logger.error(f"Video API error: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "videos": []
+        }), 500
+

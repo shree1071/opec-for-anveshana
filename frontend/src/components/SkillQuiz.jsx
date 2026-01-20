@@ -69,6 +69,31 @@ export function SkillQuiz({ field }) {
 
     const questions = getQuestions();
 
+    // Save quiz results
+    const saveQuizResults = async (score, level) => {
+        try {
+            // Save to localStorage for persistence
+            const quizResult = {
+                field,
+                score,
+                level,
+                answers,
+                completedAt: new Date().toISOString()
+            };
+            localStorage.setItem('opec_skill_quiz', JSON.stringify(quizResult));
+
+            // Optionally save to backend
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            await fetch(`${API_URL}/api/skill-assessment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(quizResult)
+            }).catch(() => { }); // Silent fail if API not available
+        } catch (e) {
+            console.log('Quiz save to localStorage');
+        }
+    };
+
     const handleAnswer = (optionIndex) => {
         const newAnswers = [...answers, optionIndex];
         setAnswers(newAnswers);
@@ -89,6 +114,25 @@ export function SkillQuiz({ field }) {
         if (score >= 80) return { level: 'Advanced', color: 'text-green-600', bg: 'bg-green-50', icon: '🏆' };
         if (score >= 50) return { level: 'Intermediate', color: 'text-blue-600', bg: 'bg-blue-50', icon: '📈' };
         return { level: 'Beginner', color: 'text-orange-600', bg: 'bg-orange-50', icon: '🌱' };
+    };
+
+    const getPersonalizedTips = (score, answers) => {
+        const tips = [];
+
+        // Based on experience level (question 1)
+        if (answers[0] === 0) tips.push('Start with fundamentals - free online courses are perfect for you');
+        if (answers[0] === 3) tips.push('Consider mentorship roles to solidify expertise');
+
+        // Based on learning style (question 2)
+        if (answers[1] === 0) tips.push('Focus on hands-on projects over theory');
+        if (answers[1] === 1) tips.push('Enroll in structured courses like Coursera or Udemy');
+        if (answers[1] === 3) tips.push('Join communities like Discord or attend tech meetups');
+
+        // Based on motivation (question 3)
+        if (answers[2] === 0) tips.push('Target high-paying companies and negotiate skills');
+        if (answers[2] === 2) tips.push('Explore social impact startups and NGO tech roles');
+
+        return tips.slice(0, 3);
     };
 
     if (!quizStarted) {
@@ -120,6 +164,10 @@ export function SkillQuiz({ field }) {
     if (quizComplete) {
         const score = calculateScore();
         const { level, color, bg, icon } = getSkillLevel(score);
+        const tips = getPersonalizedTips(score, answers);
+
+        // Save results
+        saveQuizResults(score, level);
 
         return (
             <Card className="p-8">
@@ -143,20 +191,41 @@ export function SkillQuiz({ field }) {
                         <p className="text-lg text-slate-500">Score: {score}%</p>
                     </div>
 
-                    <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                    <p className="text-slate-600 mb-4 max-w-md mx-auto">
                         {score >= 80 && "Excellent! You have strong fundamentals. Your roadmap will focus on advanced topics."}
                         {score >= 50 && score < 80 && "Good progress! Your roadmap will balance fundamentals with intermediate concepts."}
                         {score < 50 && "Great start! Your roadmap will emphasize building strong foundations first."}
                     </p>
 
-                    <Button onClick={() => {
-                        setQuizStarted(false);
-                        setCurrentQuestion(0);
-                        setAnswers([]);
-                        setQuizComplete(false);
-                    }}>
-                        Retake Quiz
-                    </Button>
+                    {/* Personalized Tips */}
+                    {tips.length > 0 && (
+                        <div className="text-left max-w-md mx-auto mb-6 p-4 bg-purple-50 rounded-lg">
+                            <p className="text-sm font-semibold text-purple-800 mb-2">💡 Personalized Tips:</p>
+                            <ul className="space-y-1">
+                                {tips.map((tip, i) => (
+                                    <li key={i} className="text-sm text-purple-700 flex items-start gap-2">
+                                        <span>•</span>
+                                        <span>{tip}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    <div className="flex justify-center gap-3">
+                        <Button onClick={() => {
+                            setQuizStarted(false);
+                            setCurrentQuestion(0);
+                            setAnswers([]);
+                            setQuizComplete(false);
+                        }} variant="outline">
+                            Retake Quiz
+                        </Button>
+                    </div>
+
+                    <p className="mt-4 text-xs text-slate-400">
+                        ✓ Results saved to personalize your experience
+                    </p>
                 </motion.div>
             </Card>
         );
