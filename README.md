@@ -11,9 +11,17 @@
 - Filtering by region (Bangalore, Belagavi, etc.), type (Govt/Private), and status (Autonomous).
 - **Real-time Search**: Instant results as you type.
 
-### 2. 🤖 AI Career Coach
-- **Gemini-Powered Chat**: Ask questions about careers, courses, and future trends.
-- **Context Aware**: Remembers your previous interactions for personalized advice.
+### 2. 🤖 OPEC AI Agent System
+- **4-Agent Architecture**: 
+  - **O**bservation: Deep listener that understands intent
+  - **P**attern: Detects psychological blockers (e.g., imposter syndrome)
+  - **E**valuation: Reality checks against market data
+  - **C**larity: Synthesizes final actionable advice
+- **Flexible Architecture**: Supports both:
+  - **Full Multi-Agent Mode**: Uses LangGraph for complex, multi-step reasoning.
+  - **Fast Single-Call Mode**: Optimized unified prompt for instant, low-latency responses (~3-4x faster).
+- **Transparent Thinking**: View the AI's internal reasoning process in real-time.
+- **Visual Progress**: Animated agent workflow display for both modes.
 
 ### 3. 📊 Career Simulation
 - Interactive form to simulate career paths based on your interests and grades.

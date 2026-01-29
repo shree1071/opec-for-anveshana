@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser } from "@clerk/clerk-react";
 import { Button } from "../../components/ui";
-import { Brain, Smile, Meh, Frown, AlertCircle, PanelRight, PanelRightClose, ArrowRight, Minimize2, Maximize2, FileText, Trash2, Download, Activity, Mic, Square, Headphones, Briefcase, Globe } from "lucide-react";
+import { Brain, Smile, Meh, Frown, AlertCircle, PanelRight, PanelRightClose, ArrowRight, Minimize2, Maximize2, FileText, Trash2, Download, Activity, Mic, Square, Headphones, Briefcase, Globe, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageBubble } from "./components/MessageBubble";
 import { InsightsSidebar } from "./components/InsightsSidebar";
@@ -11,7 +11,8 @@ import { InterviewSetupModal } from "./components/InterviewSetupModal";
 import { AgentProgress } from "./components/AgentProgress";
 import LiveJobMarket from "../../components/LiveJobMarket";
 
-import type { Message, ToastMessage } from "./types";
+import { ChatHistorySidebar } from "./components/ChatHistorySidebar";
+import type { Message, ToastMessage, Conversation } from "./types";
 
 export const Chat = () => {
     const { user } = useUser();
@@ -21,7 +22,8 @@ export const Chat = () => {
     const [initialLoading, setInitialLoading] = useState(true);
     const [clarityScore, setClarityScore] = useState(0);
     const [currentMood, setCurrentMood] = useState<'happy' | 'neutral' | 'sad' | null>(null);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Right Sidebar
+    const [isHistoryOpen, setIsHistoryOpen] = useState(true); // Left Sidebar
     const [sidebarWidth, setSidebarWidth] = useState(320);
     const [isResizing, setIsResizing] = useState(false);
     const [detectedPatterns, setDetectedPatterns] = useState<string[]>([]);
@@ -34,9 +36,16 @@ export const Chat = () => {
     const [isInterviewSetupOpen, setIsInterviewSetupOpen] = useState(false);
     const [isJobMarketOpen, setIsJobMarketOpen] = useState(false);
     const [isSearchMode, setIsSearchMode] = useState(false);
+    const [isFastMode, setIsFastMode] = useState(true);
     const [currentAgent, setCurrentAgent] = useState<'observation' | 'pattern' | 'evaluation' | 'clarity' | 'complete' | null>(null);
     const [thinkingData, setThinkingData] = useState<{ observation?: string; pattern?: string; evaluation?: string }>({});
     const [voiceContext, setVoiceContext] = useState<{ interviewMode?: boolean; company?: string; role?: string }>({});
+
+    // Conversation State
+    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+    const [forceNewChat, setForceNewChat] = useState(false);
+    const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
     const handleInterviewStart = (company: string, role: string) => {
         setVoiceContext({
@@ -52,6 +61,123 @@ export const Chat = () => {
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const recognitionRef = useRef<any>(null);
+
+    // Scroll State
+    const [isUserAtBottom, setIsUserAtBottom] = useState(true);
+
+    const handleScroll = () => {
+        if (chatContainerRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+            const diff = scrollHeight - scrollTop - clientHeight;
+            // If within 50px of bottom, consider at bottom
+            setIsUserAtBottom(diff < 50);
+        }
+    };
+
+
+    // --- Fetch Conversations ---
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+    const fetchConversations = useCallback(async () => {
+        if (!user) return;
+        try {
+            const res = await fetch(`${API_URL}/api/opec/chat/conversations?clerk_id=${user.id}`);
+            if (res.ok) {
+                const data = await res.json();
+                // Reverse order so newest is first
+                setConversations((data.conversations || []).reverse());
+            }
+        } catch (error) {
+            console.error("Failed to fetch conversations", error);
+        }
+    }, [user, API_URL]);
+
+    // Fetch History
+    const fetchHistory = useCallback(async () => {
+        if (!user) return;
+        try {
+            setInitialLoading(true);
+            const res = await fetch(`${API_URL}/api/opec/chat/history?clerk_id=${user.id}${activeConversationId ? `&conversation_id=${activeConversationId}` : ''}`);
+            if (res.ok) {
+                const data = await res.json();
+                setMessages(data.messages || []);
+                if (data.conversation_id && !activeConversationId) {
+                    setActiveConversationId(data.conversation_id);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to fetch history", error);
+            showToast("Failed to load chat history. Please refresh.", "error");
+        } finally {
+            setInitialLoading(false);
+        }
+    }, [user, activeConversationId, API_URL]);
+    // NOTE: Removed useEffect([activeConversationId]) here to avoid loop if called manually, 
+    // but fetchHistory logic handles both initial and switch.
+
+    // Initial Fetch
+    useEffect(() => {
+        if (user) {
+            fetchConversations();
+            // Also fetch history for default/active chat if no ID selected yet
+            if (!activeConversationId) {
+                fetchHistory();
+            }
+        }
+    }, [user, fetchConversations, fetchHistory, activeConversationId]);
+
+    const handleSelectConversation = async (id: string) => {
+        setActiveConversationId(id);
+        setInitialLoading(true);
+        try {
+            const res = await fetch(`${API_URL}/api/opec/chat/history?clerk_id=${user?.id}&conversation_id=${id}`);
+            if (res.ok) {
+                const data = await res.json();
+                setMessages(data.messages || []);
+                // Close mobile menu if implemented?
+            }
+        } catch (error) {
+            showToast("Failed to load conversation", "error");
+        } finally {
+            setInitialLoading(false);
+        }
+    };
+
+    const handleNewChat = useCallback(async () => {
+        setMessages([]);
+        setActiveConversationId(null);
+        setForceNewChat(true);
+        setThinkingData({});
+        if (window.innerWidth < 768) setIsHistoryOpen(false); // Mobile UX
+        // Reset scroll
+        setIsUserAtBottom(true);
+    }, []);
+
+    const handleDeleteConversation = useCallback(async (conversationId: string) => {
+        try {
+            const res = await fetch(`${API_URL}/api/opec/chat/conversations/${conversationId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clerk_id: user?.id })
+            });
+
+            if (res.ok) {
+                // Remove from local state
+                setConversations(prev => prev.filter(c => c.id !== conversationId));
+                // If deleted conversation was active, clear chat
+                if (conversationId === activeConversationId) {
+                    setMessages([]);
+                    setActiveConversationId(null);
+                }
+                showToast('Conversation deleted', 'success');
+            } else {
+                showToast('Failed to delete conversation', 'error');
+            }
+        } catch (error) {
+            console.error('Delete failed:', error);
+            showToast('Network error', 'error');
+        }
+    }, [user?.id, activeConversationId, API_URL]);
 
     // --- Voice Logic ---
     useEffect(() => {
@@ -91,13 +217,33 @@ export const Chat = () => {
     // --- Command Palette Logic ---
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            // Cmd+K / Ctrl+K for command palette
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
                 setIsCommandPaletteOpen(prev => !prev);
             }
+            // Cmd+N / Ctrl+N for new chat
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                e.preventDefault();
+                handleNewChat();
+            }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleNewChat]);
+
+    // --- Offline Detection ---
+    useEffect(() => {
+        const handleOnline = () => setIsOffline(false);
+        const handleOffline = () => setIsOffline(true);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
     }, []);
 
     // --- Layout & Resizing Logic ---
@@ -129,33 +275,32 @@ export const Chat = () => {
     }, [resize, stopResizing]);
 
     // --- Toast Logic ---
-    const showToast = (message: string, type: ToastMessage['type'] = 'info') => {
+    const showToast = (message: string, type: 'error' | 'success' | 'info') => {
         const id = Date.now();
         setToasts(prev => [...prev, { id, message, type }]);
         setTimeout(() => {
             setToasts(prev => prev.filter(t => t.id !== id));
-        }, 4000);
+        }, 3000);
     };
 
-    // --- Scroll Logic ---
+    // Scroll Logic
     const scrollToBottom = (smooth = true) => {
-        if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({
-                behavior: smooth ? "smooth" : "auto",
-                block: "end"
-            });
-        }
+        messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
     };
+
+    // Smart Auto-Scroll
+    useEffect(() => {
+        // Only scroll if user is already at bottom
+        if (isUserAtBottom) {
+            scrollToBottom();
+        }
+    }, [messages, thinkingData, currentAgent, isUserAtBottom]);
 
     useEffect(() => {
         const handleOpenJobMarket = () => setIsJobMarketOpen(true);
         window.addEventListener('open-job-market', handleOpenJobMarket);
         return () => window.removeEventListener('open-job-market', handleOpenJobMarket);
     }, []);
-
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages.length, loading]);
 
     // --- Actions ---
     const clearConversation = () => {
@@ -378,6 +523,8 @@ export const Chat = () => {
             setMessages(prev => [...prev, userMsg]);
             setInputValue("");
             setCurrentMood(null);
+            // Force scroll on user message
+            setIsUserAtBottom(true);
             requestAnimationFrame(() => scrollToBottom(false));
         }
 
@@ -403,7 +550,10 @@ export const Chat = () => {
                 body: JSON.stringify({
                     clerk_id: user?.id,
                     message: textToSend,
-                    use_search: isSearchMode
+                    use_search: isSearchMode,
+                    fast_mode: isFastMode,
+                    conversation_id: forceNewChat ? null : activeConversationId,
+                    new_chat: forceNewChat
                 }),
                 signal: abortControllerRef.current.signal
             });
@@ -433,6 +583,16 @@ export const Chat = () => {
                 };
                 setMessages(prev => [...prev, assistantMsg]);
 
+                // Update conversation state if we got a new conversation ID or title
+                if (data.conversation_id && data.conversation_id !== activeConversationId) {
+                    setActiveConversationId(data.conversation_id);
+                }
+
+                // Refresh conversation list if we got a new title
+                if (data.title) {
+                    fetchConversations();
+                }
+
                 if (data.signals && Object.keys(data.signals).length > 0) {
                     setDetectedPatterns(prev => [...new Set([...prev, ...Object.keys(data.signals).slice(0, 2)])]);
                 }
@@ -457,6 +617,7 @@ export const Chat = () => {
             setCurrentAgent(null);
             setThinkingData({});
             abortControllerRef.current = null;
+            if (forceNewChat) setForceNewChat(false);
         }
     };
 
@@ -487,284 +648,341 @@ export const Chat = () => {
     }
 
     return (
-        <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-[#F9F8F6] relative font-sans text-slate-800">
-            {/* Voice Mode Overlay */}
-            <VoiceMode
-                isOpen={isVoiceModeOpen}
-                onClose={() => {
-                    setIsVoiceModeOpen(false);
-                    setVoiceContext({}); // Reset context on close
-                }}
-                userData={user}
-                initialContext={voiceContext}
+        <div className="flex h-screen bg-white overflow-hidden relative font-sans text-slate-800">
+            {/* Left Sidebar - Chat History */}
+            <ChatHistorySidebar
+                conversations={conversations}
+                activeId={activeConversationId}
+                onSelect={handleSelectConversation}
+                onNewChat={handleNewChat}
+                onDelete={handleDeleteConversation}
+                isOpen={isHistoryOpen}
+                onClose={() => setIsHistoryOpen(false)}
             />
 
-            <InterviewSetupModal
-                isOpen={isInterviewSetupOpen}
-                onClose={() => setIsInterviewSetupOpen(false)}
-                onStart={handleInterviewStart}
-                onBrowseJobs={() => setIsJobMarketOpen(true)}
-            />
-
-            <CommandPalette
-                isOpen={isCommandPaletteOpen}
-                onClose={() => setIsCommandPaletteOpen(false)}
-                actions={powerUserActions}
-            />
-
-            {/* Zen Mode Toggle (only when in Zen Mode) */}
-            <AnimatePresence>
-                {isZenMode && (
-                    <motion.button
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => setIsZenMode(false)}
-                        className="fixed top-4 right-4 z-50 bg-white/50 hover:bg-white/80 p-2 rounded-full transition-colors backdrop-blur-sm border border-slate-200/50"
-                        title="Exit Zen Mode"
-                    >
-                        <PanelRight className="w-5 h-5 text-slate-600" />
-                    </motion.button>
-                )}
-            </AnimatePresence>
-
-            {/* Main Chat Column */}
-            <div className="flex-1 flex flex-col overflow-hidden relative">
-                {/* Persistent Voice Mode Toggle (Top Right) */}
-                <div className="absolute top-4 right-6 z-10">
-                    <button
-                        onClick={() => setIsInterviewSetupOpen(true)}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-white/80 backdrop-blur-sm border border-indigo-100 text-indigo-600 rounded-full shadow-sm hover:shadow-md hover:bg-indigo-50 transition-all text-sm font-medium"
-                    >
-                        <Headphones className="w-4 h-4" />
-                        <span>Interview Mode</span>
-                    </button>
-                </div>
-                {/* Messages Area */}
-                <div
-                    ref={chatContainerRef}
-                    className="flex-1 overflow-y-auto overflow-x-hidden px-4 scroll-smooth"
-                >
-                    <div className="max-w-2xl mx-auto space-y-8 py-8">
-                        {/* Empty State Welcome */}
-                        {messages.length <= 1 && !loading && (
-                            <div className="text-center py-12 space-y-4">
-                                <div className="w-16 h-16 mx-auto bg-gradient-to-br from-[#d97757] to-[#e89a7d] rounded-2xl flex items-center justify-center shadow-sm">
-                                    <Brain className="w-8 h-8 text-white" />
-                                </div>
-                                <h2 className="font-serif text-3xl text-slate-800">Hi! How can I help you today?</h2>
-                                <p className="text-slate-500 max-w-md mx-auto">I'm here to help you gain career clarity. We can explore your strengths, options, or just chat.</p>
-
-                                {/* New User Feature Highlight */}
-                                <motion.button
-                                    initial={{ scale: 0.9, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    whileHover={{ scale: 1.05 }}
-                                    onClick={() => setIsInterviewSetupOpen(true)}
-                                    className="mt-6 mx-auto flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all group"
-                                >
-                                    <div className="p-1.5 bg-white/20 rounded-full animate-pulse">
-                                        <Headphones className="w-5 h-5" />
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="text-xs font-semibold text-indigo-100 uppercase tracking-wider">New Feature</p>
-                                        <p className="font-bold">Try AI Interview Mode</p>
-                                    </div>
-                                    <ArrowRight className="w-4 h-4 opacity-70 group-hover:translate-x-1 transition-transform" />
-                                </motion.button>
-                            </div>
-                        )}
-
-                        <AnimatePresence initial={false}>
-                            {messages.map((msg, index) => (
-                                <MessageBubble
-                                    key={index}
-                                    msg={msg}
-                                    index={index}
-                                    onRetry={retryMessage}
-                                    formatTimestamp={formatTimestamp}
-                                />
-                            ))}
-                        </AnimatePresence>
-
-                        {/* Agent Progress Indicator */}
-                        {loading && (
-                            <AgentProgress currentAgent={currentAgent} thinking={thinkingData} />
-                        )}
-                        <div ref={messagesEndRef} className="h-4" />
-                    </div>
-                </div>
-
-                {/* Floating Input Area - Claude Style */}
-                <div className="w-full px-4 pb-8 pt-2 bg-gradient-to-t from-[#F9F8F6] via-[#F9F8F6] to-transparent">
-                    <div className={`max-w-3xl mx-auto bg-white rounded-3xl border shadow-xl shadow-slate-200/50 transition-all p-2 relative ${isListening ? 'border-red-400 ring-2 ring-red-100' : 'border-slate-200'}`}>
-
-                        <textarea
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder={isListening ? "Listening..." : "Reply..."}
-                            className={`w-full pl-4 pr-16 py-3 bg-transparent border-0 focus:ring-0 resize-none h-16 max-h-48 text-lg text-slate-800 placeholder:font-normal leading-relaxed scrollbar-hide ${isListening ? 'placeholder:text-red-400' : 'placeholder:text-slate-400'}`}
-                            disabled={!navigator.onLine}
-                        />
-
-                        <div className="flex items-center justify-between px-2 pb-1">
-                            <div className="flex items-center gap-1">
-                                {/* Mood Selectors */}
-                                {[
-                                    { mood: 'happy' as const, icon: Smile },
-                                    { mood: 'neutral' as const, icon: Meh },
-                                    { mood: 'sad' as const, icon: Frown }
-                                ].map(({ mood, icon: Icon }) => (
-                                    <button
-                                        key={mood}
-                                        onClick={() => setCurrentMood(mood)}
-                                        className={`p-2 rounded-xl transition-all text-slate-400 hover:text-slate-600 hover:bg-slate-100 ${currentMood === mood ? 'bg-pink-50 text-pink-600' : ''}`}
-                                        title={mood}
-                                    >
-                                        <Icon className="w-5 h-5" />
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                {/* Mic Button - Quick Voice Input */}
-                                <button
-                                    onClick={toggleListening}
-                                    className={`p-2 rounded-xl transition-all ${isListening ? 'bg-red-50 text-red-500 animate-pulse' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
-                                    title={isListening ? "Stop Listening" : "Voice Input"}
-                                >
-                                    {isListening ? <Square className="w-5 h-5 fill-current" /> : <Mic className="w-5 h-5" />}
-                                </button>
-
-                                {/* Divider */}
-                                <div className="w-px h-6 bg-slate-200" />
-
-                                <button
-                                    onClick={() => setIsJobMarketOpen(true)}
-                                    className="p-2 rounded-xl transition-all text-blue-500 hover:bg-blue-50"
-                                    title="Open Live Job Market"
-                                >
-                                    <Briefcase className="w-5 h-5" />
-                                </button>
-
-                                {/* Search/MCP Mode Toggle */}
-                                <button
-                                    onClick={() => setIsSearchMode(!isSearchMode)}
-                                    className={`p-2 rounded-xl transition-all ${isSearchMode ? 'bg-indigo-100 text-indigo-600 ring-2 ring-indigo-200' : 'text-slate-400 hover:bg-slate-100'}`}
-                                    title={isSearchMode ? "Web Search Active" : "Enable Web Search"}
-                                >
-                                    <Globe className={`w-5 h-5 ${isSearchMode ? 'animate-pulse' : ''}`} />
-                                </button>
-
-                                {/* Voice Agent Button - Full Conversation */}
-                                <button
-                                    onClick={() => setIsInterviewSetupOpen(true)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 rounded-xl shadow-lg shadow-emerald-500/30 transition-all hover:scale-105"
-                                    title="Start Voice Agent Conversation"
-                                >
-                                    <Headphones className="w-5 h-5 text-white" />
-                                    <span className="text-white font-semibold text-sm">Voice Agent</span>
-                                </button>
-
-                                {/* Send Button */}
-                                <Button
-                                    onClick={() => handleSendMessage()}
-                                    disabled={!inputValue.trim() || loading || !navigator.onLine}
-                                    className={`h-10 w-10 !p-0 rounded-xl flex items-center justify-center transition-all duration-200 ${inputValue.trim() ? 'bg-pink-600 hover:bg-pink-700 text-white shadow-md transform hover:scale-105' : 'bg-pink-100 text-pink-300 cursor-not-allowed'}`}
-                                >
-                                    <ArrowRight className="w-5 h-5" />
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {isListening && (
-                        <div className="text-center mt-2 text-xs text-red-500 font-medium animate-pulse">
-                            ● Listening... Speak clearly
-                        </div>
-                    )}
-                    {!isListening && (
-                        <div className="text-center mt-4 text-xs text-slate-400 font-medium tracking-wide">
-                            AI can make mistakes. Please verify important information.
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Toast Layer */}
-            <div className="fixed top-20 right-4 z-[100] space-y-2 pointer-events-none">
-                <AnimatePresence>
-                    {toasts.map(toast => (
-                        <motion.div
-                            key={toast.id}
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                            className={`px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 pointer-events-auto ${toast.type === 'error' ? 'bg-red-600 text-white' :
-                                toast.type === 'success' ? 'bg-green-600 text-white' :
-                                    'bg-slate-800 text-white'
-                                }`}
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col relative z-0 min-w-0 bg-[#F9F8F6]">
+                {/* Header */}
+                <header className="h-16 border-b border-slate-100 flex items-center justify-between px-4 bg-white/80 backdrop-blur-md z-10 shrink-0">
+                    <div className="flex items-center gap-3">
+                        {/* Toggle History Sidebar */}
+                        <button
+                            onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                            className="p-2 -ml-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                            title="Toggle Chat History"
                         >
-                            {toast.type === 'error' && <AlertCircle className="w-5 h-5" />}
-                            <span className="text-sm font-medium">{toast.message}</span>
+                            <PanelRight className={`w-5 h-5 transform ${isHistoryOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                            <div className="bg-indigo-600 p-1.5 rounded-lg">
+                                <Brain className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                                <h1 className="font-bold text-slate-800 leading-none">OPEC Agents</h1>
+                                <p className="text-[10px] text-slate-500 font-medium mt-0.5">Career Intelligence System</p>
+                            </div>
+                        </div>
+
+                        <Button
+                            onClick={() => { window.location.href = '/simulate'; }}
+                            className="ml-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 h-auto rounded-full"
+                        >
+                            Start Simulation
+                        </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <Button
+                            onClick={() => { window.location.href = '/simulate'; }}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 h-auto rounded-lg font-medium shadow-sm hover:shadow-md transition-all"
+                        >
+                            Start Simulation
+                        </Button>
+
+                        {/* Toggle Right Sidebar */}
+                        <button
+                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                            className={`p-2 rounded-lg transition-all ${isSidebarOpen ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                            title="Toggle Insights"
+                        >
+                            <Activity className="w-5 h-5" />
+                        </button>
+                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                            {user?.firstName?.[0] || "U"}
+                        </div>
+                    </div>
+                </header>
+
+                {/* Offline Banner */}
+                <AnimatePresence>
+                    {isOffline && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 40, opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="bg-amber-50 border-b border-amber-200 flex items-center justify-center text-sm text-amber-800 font-medium overflow-hidden"
+                        >
+                            <AlertCircle className="w-4 h-4 mr-2" />
+                            You're offline. Messages will be sent when connection is restored.
                         </motion.div>
-                    ))}
+                    )}
                 </AnimatePresence>
+
+                {/* Voice Mode Overlay */}
+                <VoiceMode
+                    isOpen={isVoiceModeOpen}
+                    onClose={() => {
+                        setIsVoiceModeOpen(false);
+                        setVoiceContext({});
+                    }}
+                    userData={user}
+                    initialContext={voiceContext}
+                />
+
+                <InterviewSetupModal
+                    isOpen={isInterviewSetupOpen}
+                    onClose={() => setIsInterviewSetupOpen(false)}
+                    onStart={handleInterviewStart}
+                    onBrowseJobs={() => setIsJobMarketOpen(true)}
+                />
+
+                <CommandPalette
+                    isOpen={isCommandPaletteOpen}
+                    onClose={() => setIsCommandPaletteOpen(false)}
+                    actions={powerUserActions}
+                />
+
+                {/* Zen Mode Toggle */}
+                <AnimatePresence>
+                    {isZenMode && (
+                        <motion.button
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsZenMode(false)}
+                            className="fixed top-4 right-4 z-50 bg-white/50 hover:bg-white/80 p-2 rounded-full transition-colors backdrop-blur-sm border border-slate-200/50"
+                            title="Exit Zen Mode"
+                        >
+                            <PanelRight className="w-5 h-5 text-slate-600" />
+                        </motion.button>
+                    )}
+                </AnimatePresence>
+
+                {/* Main Chat Area */}
+                <div className="flex-1 flex flex-col overflow-hidden relative">
+
+                    {/* Persistent Voice Mode Toggle (Top Right) */}
+                    <div className="absolute top-4 right-6 z-10 pointer-events-none">
+                        {/* Wrapped in pointer-events-none container to not block clicks, button has auto */}
+                        <button
+                            onClick={() => setIsInterviewSetupOpen(true)}
+                            className="pointer-events-auto flex items-center gap-2 px-3 py-1.5 bg-white/80 backdrop-blur-sm border border-indigo-100 text-indigo-600 rounded-full shadow-sm hover:shadow-md hover:bg-indigo-50 transition-all text-sm font-medium"
+                        >
+                            <Headphones className="w-4 h-4" />
+                            <span>Interview Mode</span>
+                        </button>
+                    </div>
+
+                    {/* Messages Scroll Area */}
+                    <div
+                        ref={chatContainerRef}
+                        onScroll={handleScroll}
+                        className="flex-1 overflow-y-auto overflow-x-hidden px-4 scroll-smooth"
+                    >
+                        <div className="max-w-3xl mx-auto space-y-8 py-8">
+                            {/* Empty State Welcome */}
+                            {messages.length === 0 && !loading && (
+                                <div className="text-center py-12 space-y-4 select-none">
+                                    <div className="w-16 h-16 mx-auto bg-gradient-to-br from-[#d97757] to-[#e89a7d] rounded-2xl flex items-center justify-center shadow-sm">
+                                        <Brain className="w-8 h-8 text-white" />
+                                    </div>
+                                    <h2 className="font-serif text-3xl text-slate-800">Hi {user?.firstName}!</h2>
+                                    <p className="text-slate-500 max-w-md mx-auto leading-relaxed">
+                                        I'm your OPEC Career Agent. I analyze your profile to give strategic advice.
+                                        Start a new chat or continue below.
+                                    </p>
+
+                                    <motion.button
+                                        initial={{ scale: 0.9, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        whileHover={{ scale: 1.05 }}
+                                        onClick={() => setIsInterviewSetupOpen(true)}
+                                        className="mt-6 mx-auto flex items-center gap-3 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-full shadow-sm hover:shadow-md transition-all group"
+                                    >
+                                        <div className="p-1.5 bg-indigo-50 rounded-full text-indigo-600">
+                                            <Headphones className="w-4 h-4" />
+                                        </div>
+                                        <span className="font-medium">Try Voice Interview</span>
+                                    </motion.button>
+                                </div>
+                            )}
+
+                            <AnimatePresence initial={false}>
+                                {messages.map((msg, index) => (
+                                    <MessageBubble
+                                        key={index}
+                                        msg={msg}
+                                        index={index}
+                                        onRetry={retryMessage}
+                                        formatTimestamp={formatTimestamp}
+                                    />
+                                ))}
+                            </AnimatePresence>
+
+                            {/* Agent Progress Indicator */}
+                            {loading && (
+                                <AgentProgress currentAgent={currentAgent} thinking={thinkingData} />
+                            )}
+                            <div ref={messagesEndRef} className="h-4" />
+                        </div>
+                    </div>
+
+                    {/* Input Area - Claude Style */}
+                    <div className="w-full px-4 pb-6 pt-2">
+                        <div className={`max-w-3xl mx-auto bg-white rounded-2xl border shadow-xl shadow-slate-200/50 transition-all p-3 relative ${isListening ? 'border-red-400 ring-2 ring-red-100' : 'border-slate-200 focus-within:border-indigo-300 focus-within:ring-4 focus-within:ring-indigo-100/50'}`}>
+
+                            <textarea
+                                value={inputValue}
+                                onChange={(e) => setInputValue(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder={isListening ? "Listening..." : "Message OPEC..."}
+                                className={`w-full pl-3 pr-16 py-2 bg-transparent border-0 focus:ring-0 resize-none h-14 max-h-48 text-[16px] text-slate-800 placeholder:text-slate-400 leading-relaxed custom-scrollbar ${isListening ? 'placeholder:text-red-400' : ''}`}
+                                disabled={!navigator.onLine}
+                            />
+
+                            <div className="flex items-center justify-between px-1 pt-2 border-t border-slate-50 mt-1">
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setIsJobMarketOpen(true)}
+                                        className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                        title="Job Market"
+                                    >
+                                        <Briefcase className="w-5 h-5" />
+                                    </button>
+
+                                    <button
+                                        onClick={() => setIsFastMode(!isFastMode)}
+                                        className={`p-2 rounded-lg transition-colors flex items-center gap-1.5 ${!isFastMode
+                                            ? 'bg-purple-50 text-purple-600'
+                                            : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                        title={isFastMode ? "Switch to Deep Mode" : "Switch to Fast Mode"}
+                                    >
+                                        {isFastMode ? <Zap className="w-5 h-5" /> : <Brain className="w-5 h-5" />}
+                                    </button>
+
+                                    <button
+                                        onClick={() => setIsSearchMode(!isSearchMode)}
+                                        className={`p-2 rounded-lg transition-colors ${isSearchMode ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                        title="Web Search"
+                                    >
+                                        <Globe className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={toggleListening}
+                                        className={`p-2 rounded-lg transition-all ${isListening ? 'bg-red-50 text-red-500 animate-pulse' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                        title="Voice Input"
+                                    >
+                                        {isListening ? <Square className="w-5 h-5 fill-current" /> : <Mic className="w-5 h-5" />}
+                                    </button>
+
+                                    <Button
+                                        onClick={() => handleSendMessage()}
+                                        disabled={!inputValue.trim() || loading || !navigator.onLine}
+                                        className={`h-9 w-9 !p-0 rounded-xl flex items-center justify-center transition-all ${inputValue.trim() ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-slate-100 text-slate-300'}`}
+                                    >
+                                        <ArrowRight className="w-5 h-5" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Disclaimer */}
+                        {!isListening && (
+                            <div className="text-center mt-3 text-[11px] text-slate-400">
+                                AI can make mistakes. Please verify important information.
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Toasts */}
+                <div className="fixed top-20 right-4 z-[100] space-y-2 pointer-events-none">
+                    <AnimatePresence>
+                        {toasts.map(toast => (
+                            <motion.div
+                                key={toast.id}
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 20 }}
+                                className={`px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 pointer-events-auto ${toast.type === 'error' ? 'bg-red-600 text-white' :
+                                    toast.type === 'success' ? 'bg-green-600 text-white' :
+                                        'bg-slate-800 text-white'
+                                    }`}
+                            >
+                                {toast.type === 'error' && <AlertCircle className="w-5 h-5" />}
+                                <span className="text-sm font-medium">{toast.message}</span>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                </div>
+
+                {/* Live Job Market Overlay */}
+                <AnimatePresence>
+                    {isJobMarketOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                        >
+                            <div className="bg-white w-full max-w-4xl h-[80vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col relative">
+                                <button
+                                    onClick={() => setIsJobMarketOpen(false)}
+                                    className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors z-10"
+                                >
+                                    <PanelRightClose className="w-5 h-5 text-slate-600" />
+                                </button>
+                                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                    <LiveJobMarket onInterviewStart={handleInterviewStart} />
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
             </div>
 
-            {/* Resizer Handle */}
+            {/* Right Sidebar - Insights (Resizable) */}
             <AnimatePresence>
                 {!isZenMode && isSidebarOpen && (
-                    <div
-                        className={`w-1 cursor-col-resize hover:bg-indigo-400/50 active:bg-indigo-600 z-50 flex flex-col justify-center items-center transition-colors ${isResizing ? 'bg-indigo-600' : 'bg-slate-100'}`}
-                        onMouseDown={startResizing}
-                    >
-                        <div className="w-0.5 h-8 bg-slate-300 rounded-full" />
+                    <div className="relative flex h-full shadow-xl z-20">
+                        {/* Resizer */}
+                        <div
+                            className={`w-1 cursor-col-resize hover:bg-indigo-400/50 active:bg-indigo-600 z-50 flex flex-col justify-center items-center transition-colors ${isResizing ? 'bg-indigo-600' : 'bg-slate-100'}`}
+                            onMouseDown={startResizing}
+                        >
+                            <div className="w-0.5 h-8 bg-slate-300 rounded-full" />
+                        </div>
+
+                        <InsightsSidebar
+                            show={true} // Controlled by parent conditional
+                            onClose={() => setIsSidebarOpen(false)}
+                            messagesCount={messages.length}
+                            clarityScore={clarityScore}
+                            detectedPatterns={detectedPatterns}
+                            onExport={exportConversation}
+                            width={sidebarWidth}
+                            onGenerateReport={generateReport}
+                            isGeneratingReport={generatingReport}
+                        />
                     </div>
                 )}
             </AnimatePresence>
 
-            {/* Live Job Market Overlay */}
-            <AnimatePresence>
-                {isJobMarketOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-                    >
-                        <div className="bg-white w-full max-w-4xl h-[80vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col relative">
-                            <button
-                                onClick={() => setIsJobMarketOpen(false)}
-                                className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors z-10"
-                            >
-                                <PanelRightClose className="w-5 h-5 text-slate-600" />
-                            </button>
-                            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                                <LiveJobMarket onInterviewStart={handleInterviewStart} />
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Resizable Sidebar */}
-            {
-                !isZenMode && (
-                    <InsightsSidebar
-                        show={isSidebarOpen}
-                        onClose={() => setIsSidebarOpen(false)}
-                        messagesCount={messages.length}
-                        clarityScore={clarityScore}
-                        detectedPatterns={detectedPatterns}
-                        onExport={exportConversation}
-                        width={sidebarWidth}
-                        onGenerateReport={generateReport}
-                        isGeneratingReport={generatingReport}
-                    />
-                )
-            }
-        </div >
+        </div>
     );
 };

@@ -1,6 +1,14 @@
 import { Navbar } from "./Navbar";
+import { useLocation } from "react-router-dom";
 
 export function Layout({ children }) {
+    const location = useLocation();
+    const isChatPage = location.pathname === '/opec/chat';
+
+    if (isChatPage) {
+        return children;
+    }
+
     return (
         <div className="min-h-screen bg-slate-50">
             <Navbar />

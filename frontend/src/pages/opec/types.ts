@@ -19,3 +19,10 @@ export interface ToastMessage {
     message: string;
     type: 'error' | 'success' | 'info';
 }
+export interface Conversation {
+    id: string;
+    title: string;
+    created_at: string;
+    updated_at?: string;
+    is_active?: boolean;
+}

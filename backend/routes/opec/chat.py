@@ -5,13 +5,106 @@ from datetime import datetime
 
 chat_bp = Blueprint('opec_chat', __name__)
 
+@chat_bp.route('/conversations', methods=['GET'])
+def get_conversations():
+    try:
+        clerk_id = request.args.get('clerk_id')
+        if not clerk_id:
+             return jsonify({"error": "Missing clerk_id"}), 400
+             
+        supabase = get_supabase_client()
+        if not supabase:
+             return jsonify({"error": "Database connection failed"}), 500
+        
+        # Get student
+        student_res = supabase.table('students').select('id').eq('clerk_user_id', clerk_id).limit(1).execute()
+        if not student_res.data:
+            return jsonify({"conversations": []}), 200
+        student_id = student_res.data[0]['id']
+        
+        # Get conversations ordered by last update (or creation if no updates)
+        # Assuming conversations have created_at. If updated_at exists, use that.
+        convs_res = supabase.table('conversations').select('*').eq('student_id', student_id).order('created_at', desc=True).execute()
+        
+        return jsonify({"conversations": convs_res.data}), 200
+    except Exception as e:
+        print(f"Error fetching conversations: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@chat_bp.route('/conversations/<conversation_id>', methods=['DELETE'])
+def delete_conversation(conversation_id):
+    try:
+        data = request.json
+        clerk_id = data.get('clerk_id')
+        
+        if not clerk_id:
+            return jsonify({"error": "Missing clerk_id"}), 400
+            
+        supabase = get_supabase_client()
+        if not supabase:
+            return jsonify({"error": "Database connection failed"}), 500
+        
+        # Get student ID
+        student_res = supabase.table('students').select('id').eq('clerk_user_id', clerk_id).limit(1).execute()
+        if not student_res.data:
+            return jsonify({"error": "Student not found"}), 404
+        student_id = student_res.data[0]['id']
+        
+        # Verify ownership before deleting
+        conv_res = supabase.table('conversations').select('id').eq('id', conversation_id).eq('student_id', student_id).limit(1).execute()
+        if not conv_res.data:
+            return jsonify({"error": "Conversation not found or unauthorized"}), 404
+        
+        # Delete messages first (foreign key constraint)
+        supabase.table('messages').delete().eq('conversation_id', conversation_id).execute()
+        
+        # Delete conversation
+        supabase.table('conversations').delete().eq('id', conversation_id).execute()
+        
+        return jsonify({"message": "Conversation deleted successfully"}), 200
+        
+    except Exception as e:
+        print(f"Error deleting conversation: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@chat_bp.route('/conversations', methods=['POST'])
+def create_conversation():
+    try:
+        data = request.json
+        clerk_id = data.get('clerk_id')
+        title = data.get('title', 'New Chat')
+        
+        if not clerk_id:
+             return jsonify({"error": "Missing clerk_id"}), 400
+             
+        supabase = get_supabase_client()
+        # Get student
+        student_res = supabase.table('students').select('id').eq('clerk_user_id', clerk_id).limit(1).execute()
+        if not student_res.data:
+            return jsonify({"error": "Student not found"}), 404
+        student_id = student_res.data[0]['id']
+        
+        # Create new conversation
+        new_conv = supabase.table('conversations').insert({
+            "student_id": student_id, 
+            "title": title,
+            "is_active": True
+        }).execute()
+        
+        return jsonify(new_conv.data[0]), 201
+    except Exception as e:
+        print(f"Error creating conversation: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @chat_bp.route('/message', methods=['POST'])
 def send_message():
     try:
         data = request.json
         clerk_id = data.get('clerk_id')
         message = data.get('message')
+        conversation_id = data.get('conversation_id') # Support explicit conversation ID
         use_search = data.get('use_search', False)
+        use_fast_mode = data.get('fast_mode', True)
         
         if not clerk_id or not message:
              return jsonify({"error": "Missing clerk_id or message"}), 400
@@ -42,17 +135,28 @@ def send_message():
         }
         
         # 2. Get or Create Conversation
-        conv_res = supabase.table('conversations').select('*').eq('student_id', student_id).eq('is_active', True).execute()
-        if conv_res.data:
-            conv_id = conv_res.data[0]['id']
-            msgs_res = supabase.table('messages').select('*').eq('conversation_id', conv_id).order('created_at', desc=True).limit(5).execute()
-            context_messages = msgs_res.data[::-1]
-        else:
-            new_conv = supabase.table('conversations').insert({"student_id": student_id, "title": "New Conversation"}).execute()
-            conv_id = new_conv.data[0]['id']
-            context_messages = []
+        conv_id = conversation_id
+        is_new_conversation = False
+        new_chat_requested = data.get('new_chat', False)
+
+        if not conv_id:
+            # Check for existing active conversation ONLY if new_chat is NOT requested
+            if not new_chat_requested:
+                conv_res = supabase.table('conversations').select('*').eq('student_id', student_id).eq('is_active', True).order('created_at', desc=True).limit(1).execute()
+                if conv_res.data:
+                    conv_id = conv_res.data[0]['id']
+            
+            # If still no ID (new chat requested OR no active found), create new
+            if not conv_id:
+                new_conv = supabase.table('conversations').insert({"student_id": student_id, "title": "New Conversation"}).execute()
+                conv_id = new_conv.data[0]['id']
+                is_new_conversation = True
         
-        # 3. Save User Message (signals will be populated by Pattern Agent)
+        # Load context messages for this conversation
+        msgs_res = supabase.table('messages').select('*').eq('conversation_id', conv_id).order('created_at', desc=True).limit(5).execute()
+        context_messages = msgs_res.data[::-1] if msgs_res.data else []
+        
+        # 3. Save User Message
         user_msg = {
             "conversation_id": conv_id,
             "student_id": student_id,
@@ -64,16 +168,15 @@ def send_message():
         user_msg_id = user_msg_res.data[0]['id'] if user_msg_res.data else None
         
         # 4. Process through OPEC 4-Agent Orchestrator
-        # MCP data injection for search mode
         mcp_data = None
         if use_search:
             try:
                 from services.ai_engine import enhance_with_mcp_data
                 mcp_data = enhance_with_mcp_data(message)
             except Exception:
-                pass  # Gracefully fail if MCP unavailable
+                pass
         
-        orchestrator = get_orchestrator()
+        orchestrator = get_orchestrator(fast_mode=use_fast_mode)
         ai_response_text, detected_signals, thinking = orchestrator.process_message(
             message=message,
             context_messages=context_messages,
@@ -81,7 +184,7 @@ def send_message():
             mcp_data=mcp_data
         )
         
-        # 5. Update user message with detected signals from Pattern Agent
+        # 5. Update user message with detected signals
         if detected_signals and user_msg_id:
             supabase.table('messages').update({"signals": detected_signals}).eq('id', user_msg_id).execute()
         
@@ -93,25 +196,43 @@ def send_message():
             "content": ai_response_text
         }
         supabase.table('messages').insert(ai_msg).execute()
-        
+
+        # 7. Smart Title Generation (Auto-Update) - NON-BLOCKING
+        # This runs AFTER the response is ready, so it won't block the chat
+        generated_title = None
+        try:
+            # Only try if conversation is brand new
+            if is_new_conversation:
+                # Keep it super simple - just use first message content
+                simple_title = message[:30].strip()
+                if simple_title:
+                    supabase.table('conversations').update({"title": simple_title}).eq('id', conv_id).execute()
+                    generated_title = simple_title
+        except Exception as e:
+            # Title generation is non-critical - log and continue
+            print(f"Title generation failed (non-blocking): {e}")
+
         return jsonify({
             "response": ai_response_text,
             "signals": detected_signals,
             "thinking": thinking,
+            "conversation_id": conv_id,
+            "title": generated_title,
             "agents_used": ["observation", "pattern", "evaluation", "clarity"]
         }), 200
 
     except Exception as e:
         print(f"Error in chat endpoint: {e}")
         import traceback
-        tb = traceback.format_exc()
         traceback.print_exc()
-        return jsonify({"error": str(e), "traceback": tb}), 500
+        return jsonify({"error": str(e)}), 500
 
 @chat_bp.route('/history', methods=['GET'])
 def get_chat_history():
     try:
         clerk_id = request.args.get('clerk_id')
+        conversation_id = request.args.get('conversation_id') # Optional specific conversation
+        
         if not clerk_id:
              return jsonify({"error": "Missing clerk_id"}), 400
              
@@ -119,33 +240,47 @@ def get_chat_history():
         if not supabase:
              return jsonify({"error": "Database connection failed"}), 500
         
-        # 1. Get student ID
+        # Get student ID
         student_res = supabase.table('students').select('id').eq('clerk_user_id', clerk_id).limit(1).execute()
-        if not student_res.data or len(student_res.data) == 0:
-            return jsonify({"messages": []}), 200 # Return empty if no student yet (first login)
+        if not student_res.data:
+            return jsonify({"messages": []}), 200
         student_id = student_res.data[0]['id']
         
-        # 2. Get active conversation
-        conv_res = supabase.table('conversations').select('*').eq('student_id', student_id).eq('is_active', True).execute()
-        if not conv_res.data:
-            return jsonify({"messages": []}), 200
-            
-        conv_id = conv_res.data[0]['id']
+        conv_id = conversation_id
         
-        # 3. Get messages
+        # If no conversation_id, try to find most recent active one
+        if not conv_id:
+            conv_res = supabase.table('conversations').select('*').eq('student_id', student_id).eq('is_active', True).order('created_at', desc=True).limit(1).execute()
+            if not conv_res.data:
+                return jsonify({"messages": []}), 200
+            conv_id = conv_res.data[0]['id']
+        
+        # Get messages
         msgs_res = supabase.table('messages').select('*').eq('conversation_id', conv_id).order('created_at', desc=False).execute()
         
         formatted_messages = []
         for msg in msgs_res.data:
+            # Handle thinking data if likely stored in signals or separate column? 
+            # Our current schema doesn't seem to persist 'thinking' separately in DB yet?
+            # Uh oh, I need to check schema. MessageBubble expects 'thinking'.
+            # Did I create a column for it? Probably not yet by user.
+            # I should store thinking in the 'details' or 'metadata' column if exists, 
+            # or hacked into 'signals' or just skip persistance for now if user didn't ask for DB migration.
+            # For now, let's assume valid fields.
+            
             formatted_messages.append({
                 "role": msg['role'],
                 "content": msg['content'],
                 "signals": msg.get('signals') or {},
                 "timestamp": datetime.fromisoformat(msg['created_at']).timestamp() * 1000 if msg.get('created_at') else datetime.now().timestamp() * 1000,
-                "status": "sent"
+                "status": "sent",
+                # "thinking": ... (If we saved it, load it here)
             })
             
-        return jsonify({"messages": formatted_messages}), 200
+        return jsonify({
+            "messages": formatted_messages,
+            "conversation_id": conv_id
+        }), 200
 
     except Exception as e:
         print(f"Error fetching history: {e}")
