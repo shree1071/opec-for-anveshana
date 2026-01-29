@@ -2,8 +2,8 @@ import os
 import json
 import logging
 import sys
-print("DEBUG: ai_engine.py loading...", file=sys.stderr)
-# try:
+# Force mock mode for legacy genai import
+genai = None
 #     import google.generativeai as genai
 #     print("DEBUG: ai_engine.py google.generativeai imported", file=sys.stderr)
 # except Exception as e:
@@ -146,9 +146,9 @@ def run_career_simulation(user_profile):
 
         try:
             response = call_gemini_with_retry(client, valid_model, detailed_prompt)
-        except RetryError:
-            logger.warning(f"Model {valid_model} failed after retries. Falling back to gemini-2.0-flash-exp")
-            response = call_gemini_with_retry(client, 'gemini-2.0-flash-exp', detailed_prompt)
+        except Exception as e:
+            logger.error(f"Gemini call failed: {e}")
+            raise e
         response_text = response.text
         
         # Clean up if markdown is present
@@ -229,9 +229,9 @@ If real-time market data is provided, cite it explicitly (e.g., "I see 12 active
 
         try:
             response = call_gemini_with_retry(client, valid_model, prompt)
-        except RetryError:
-            logger.warning(f"Model {valid_model} failed after retries. Falling back to gemini-2.0-flash-exp")
-            response = call_gemini_with_retry(client, 'gemini-2.0-flash-exp', prompt)
+        except Exception as e:
+            logger.error(f"Chat Gemini call failed: {e}")
+            return "I'm having a bit of trouble connecting right now. Please try again!"
         return response.text
         
     except Exception as e:

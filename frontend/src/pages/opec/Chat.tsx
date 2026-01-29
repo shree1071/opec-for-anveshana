@@ -8,6 +8,7 @@ import { InsightsSidebar } from "./components/InsightsSidebar";
 import { CommandPalette, type CommandAction } from "./components/CommandPalette";
 import { VoiceMode } from "./components/VoiceMode";
 import { InterviewSetupModal } from "./components/InterviewSetupModal";
+import { AgentProgress } from "./components/AgentProgress";
 import LiveJobMarket from "../../components/LiveJobMarket";
 
 import type { Message, ToastMessage } from "./types";
@@ -33,6 +34,8 @@ export const Chat = () => {
     const [isInterviewSetupOpen, setIsInterviewSetupOpen] = useState(false);
     const [isJobMarketOpen, setIsJobMarketOpen] = useState(false);
     const [isSearchMode, setIsSearchMode] = useState(false);
+    const [currentAgent, setCurrentAgent] = useState<'observation' | 'pattern' | 'evaluation' | 'clarity' | 'complete' | null>(null);
+    const [thinkingData, setThinkingData] = useState<{ observation?: string; pattern?: string; evaluation?: string }>({});
     const [voiceContext, setVoiceContext] = useState<{ interviewMode?: boolean; company?: string; role?: string }>({});
 
     const handleInterviewStart = (company: string, role: string) => {
@@ -379,7 +382,18 @@ export const Chat = () => {
         }
 
         setLoading(true);
+        setCurrentAgent('observation'); // Start with observation agent
         abortControllerRef.current = new AbortController();
+
+        // Simulate agent progression through O -> P -> E -> C
+        const agentSequence: Array<'observation' | 'pattern' | 'evaluation' | 'clarity'> = ['observation', 'pattern', 'evaluation', 'clarity'];
+        let agentIndex = 0;
+        const agentIntervalId = setInterval(() => {
+            agentIndex++;
+            if (agentIndex < agentSequence.length) {
+                setCurrentAgent(agentSequence[agentIndex]);
+            }
+        }, 800); // Cycle every 800ms
 
         try {
             const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -394,8 +408,16 @@ export const Chat = () => {
                 signal: abortControllerRef.current.signal
             });
 
+            clearInterval(agentIntervalId);
+            setCurrentAgent('complete');
+
             if (res.ok) {
                 const data = await res.json();
+
+                // Store thinking data from response
+                if (data.thinking) {
+                    setThinkingData(data.thinking);
+                }
 
                 setMessages(prev => prev.map(msg =>
                     msg.timestamp === timestamp ? { ...msg, status: 'sent' } : msg
@@ -406,7 +428,8 @@ export const Chat = () => {
                     content: data.response,
                     signals: data.signals || {},
                     timestamp: Date.now(),
-                    status: 'sent'
+                    status: 'sent',
+                    thinking: data.thinking || undefined
                 };
                 setMessages(prev => [...prev, assistantMsg]);
 
@@ -422,6 +445,7 @@ export const Chat = () => {
                 showToast('Failed to send message.', 'error');
             }
         } catch (error: any) {
+            clearInterval(agentIntervalId);
             if (error.name !== 'AbortError') {
                 setMessages(prev => prev.map(msg =>
                     msg.timestamp === timestamp ? { ...msg, status: 'error' } : msg
@@ -430,6 +454,8 @@ export const Chat = () => {
             }
         } finally {
             setLoading(false);
+            setCurrentAgent(null);
+            setThinkingData({});
             abortControllerRef.current = null;
         }
     };
@@ -517,7 +543,7 @@ export const Chat = () => {
                 {/* Messages Area */}
                 <div
                     ref={chatContainerRef}
-                    className="flex-1 overflow-y-auto px-4 scroll-smooth"
+                    className="flex-1 overflow-y-auto overflow-x-hidden px-4 scroll-smooth"
                 >
                     <div className="max-w-2xl mx-auto space-y-8 py-8">
                         {/* Empty State Welcome */}
@@ -561,15 +587,9 @@ export const Chat = () => {
                             ))}
                         </AnimatePresence>
 
-                        {/* Claude-style Typing Indicator */}
+                        {/* Agent Progress Indicator */}
                         {loading && (
-                            <div className="flex justify-start py-4 pl-1">
-                                <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-1.5 w-fit">
-                                    <div className="w-2 h-2 rounded-full bg-[#d97757] animate-typing-dot" style={{ animationDelay: '0s' }}></div>
-                                    <div className="w-2 h-2 rounded-full bg-[#d97757] animate-typing-dot" style={{ animationDelay: '0.2s' }}></div>
-                                    <div className="w-2 h-2 rounded-full bg-[#d97757] animate-typing-dot" style={{ animationDelay: '0.4s' }}></div>
-                                </div>
-                            </div>
+                            <AgentProgress currentAgent={currentAgent} thinking={thinkingData} />
                         )}
                         <div ref={messagesEndRef} className="h-4" />
                     </div>

@@ -7,11 +7,9 @@ import hashlib
 import time
 import sys
 from functools import lru_cache
-from .prompts import SIGNAL_DETECTION_PROMPT, OPEC_ASSISTANT_PROMPT
+from .prompts import OPEC_UNIFIED_PROMPT
 from core.ai.api_key_manager import get_key_manager, QuotaExhaustedError
 from middleware.error_handler import APIError
-
-print("DEBUG: gemini_service.py loading...", file=sys.stderr)
 
 # Simple in-memory cache for responses
 response_cache = {}
@@ -86,10 +84,7 @@ def generate_chat_response(message, context_messages=None, active_patterns=None,
         print("[CACHE HIT] Returning cached response")
         return response_cache[cache_key]
     
-    # Format pattern interventions
-    pattern_text = "None"
-    if active_patterns:
-        pattern_text = "\n".join([f"- {p['name']}: {p['intervention_template']}" for p in active_patterns])
+    # Legacy pattern formatting removed - handled by OPEC Unified Prompt internally
     
     # Format student context for the prompt
     student_context_str = ""
@@ -112,10 +107,13 @@ def generate_chat_response(message, context_messages=None, active_patterns=None,
         except Exception as e:
             print(f"ERROR: MCP Search failed: {e}")
 
-    system_prompt = OPEC_ASSISTANT_PROMPT.format(
-        pattern_interventions=pattern_text,
-        student_context=student_context_str
-    ) + mcp_context
+    
+    # Unified OPEC Prompt Construction
+    system_prompt = OPEC_UNIFIED_PROMPT.format(
+        student_context=student_context_str,
+        mcp_context=mcp_context
+    )
+
     
     # Build chat history
     history = [
@@ -148,12 +146,31 @@ def generate_chat_response(message, context_messages=None, active_patterns=None,
             except:
                 raise # Re-raise if fallback also fails
         
-        response_text = response.text
+        raw_response = response.text
         
-        # Cache the response (expires after 1 hour in simple dict)
-        response_cache[cache_key] = response_text
+        # Parse the structured OPEC response
+        final_response_text = raw_response
         
-        return response_text
+        try:
+            if "[[CLARITY]]" in raw_response:
+                parts = raw_response.split("[[CLARITY]]")
+                final_response_text = parts[1].strip()
+                
+                # Log the internal thought process
+                internal_thoughts = parts[0]
+                print(f"\n--- OPEC INTERNAL PROCESS ---\n{internal_thoughts}\n-----------------------------")
+            else:
+                print("WARNING: OPEC structured signals not found in response. Returning raw text.")
+                
+        except Exception as parse_error:
+            print(f"Error parsing OPEC response: {parse_error}")
+            # Fallback to raw response if parsing fails
+            final_response_text = raw_response
+
+        # Cache the clean response
+        response_cache[cache_key] = final_response_text
+        
+        return final_response_text
     except QuotaExhaustedError as e:
         # Try one more time with a different key
         try:

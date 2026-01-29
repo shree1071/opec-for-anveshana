@@ -7,6 +7,11 @@ export interface Message {
     timestamp: number;
     status?: 'sending' | 'sent' | 'error';
     isSystem?: boolean;
+    thinking?: {
+        observation?: string;
+        pattern?: string;
+        evaluation?: string;
+    };
 }
 
 export interface ToastMessage {

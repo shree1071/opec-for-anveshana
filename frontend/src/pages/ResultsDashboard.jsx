@@ -6,7 +6,7 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { CareerFlowchart } from "../components/CareerFlowchart";
 import { CareerJourney } from "../components/CareerJourney";
-import { CareerCoachChat } from "../components/CareerCoachChat";
+
 import { ResumeBuilder } from "../components/ResumeBuilder";
 import { CourseRecommendations } from "../components/CourseRecommendations";
 import { SalaryInsights } from "../components/SalaryInsights";
@@ -164,10 +164,10 @@ export function ResultsDashboard() {
                                             >
                                                 <div className="flex flex-col items-center">
                                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold ${index === 0
-                                                            ? 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/30'
-                                                            : index === roadmap.length - 1
-                                                                ? 'bg-gradient-to-br from-pink-500 to-purple-500 text-white shadow-lg shadow-purple-500/30'
-                                                                : 'bg-slate-700 text-slate-300'
+                                                        ? 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/30'
+                                                        : index === roadmap.length - 1
+                                                            ? 'bg-gradient-to-br from-pink-500 to-purple-500 text-white shadow-lg shadow-purple-500/30'
+                                                            : 'bg-slate-700 text-slate-300'
                                                         }`}>
                                                         Y{stage.year}
                                                     </div>
@@ -292,8 +292,7 @@ export function ResultsDashboard() {
 
             </div>
 
-            {/* Floating Chat Widget */}
-            <CareerCoachChat userRoadmap={result} />
+            {/* Floating Chat Widget Removed */}
         </div>
     );
 }

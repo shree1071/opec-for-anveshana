@@ -10,3 +10,6 @@ requests>=2.31.0
 gunicorn==21.2.0
 duckduckgo-search>=6.0.0
 beautifulsoup4>=4.12.0
+langgraph
+langchain-google-genai
+langchain-core

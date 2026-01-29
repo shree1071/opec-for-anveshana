@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from core.supabase_client import get_supabase_client
-from core.ai.gemini_service import detect_signals, generate_chat_response
+from core.ai.agents import get_orchestrator
 from datetime import datetime
 
 chat_bp = Blueprint('opec_chat', __name__)
@@ -11,15 +11,13 @@ def send_message():
         data = request.json
         clerk_id = data.get('clerk_id')
         message = data.get('message')
-        use_search = data.get('use_search', False) # Default to False: Standard Chat
-        print(f"DEBUG: Processing message from clerk_id: {clerk_id}, use_search={use_search}")
+        use_search = data.get('use_search', False)
         
         if not clerk_id or not message:
              return jsonify({"error": "Missing clerk_id or message"}), 400
              
         supabase = get_supabase_client()
         if not supabase:
-             print("ERROR: Supabase client is None. Check .env variables.")
              return jsonify({"error": "Database connection failed. Server configuration error."}), 500
         
         # 1. Get student ID and full profile
@@ -30,13 +28,13 @@ def send_message():
         student_data = student_res.data[0]
         student_id = student_data['id']
         
-        # Build student context for AI
+        # Build student context for AI agents
         student_context = {
             "name": student_data.get('name'),
             "email": student_data.get('email'),
-            "education_level": student_data.get('education_level'),  # "school" or "college"
-            "grade_or_year": student_data.get('grade_or_year'),  # "10th", "12th", "1st Year", etc.
-            "stream_or_branch": student_data.get('stream_or_branch'),  # "PCM", "CS", "Mechanical", etc.
+            "education_level": student_data.get('education_level'),
+            "grade_or_year": student_data.get('grade_or_year'),
+            "stream_or_branch": student_data.get('stream_or_branch'),
             "interests": student_data.get('interests'),
             "goals": student_data.get('goals'),
             "location": student_data.get('location'),
@@ -44,52 +42,48 @@ def send_message():
         }
         
         # 2. Get or Create Conversation
-        # For simplicity, assuming one active conversation for now
         conv_res = supabase.table('conversations').select('*').eq('student_id', student_id).eq('is_active', True).execute()
         if conv_res.data:
             conv_id = conv_res.data[0]['id']
-            # Get context messages
             msgs_res = supabase.table('messages').select('*').eq('conversation_id', conv_id).order('created_at', desc=True).limit(5).execute()
-            context_messages = msgs_res.data[::-1] # Reverse to chronological
+            context_messages = msgs_res.data[::-1]
         else:
             new_conv = supabase.table('conversations').insert({"student_id": student_id, "title": "New Conversation"}).execute()
             conv_id = new_conv.data[0]['id']
             context_messages = []
-            
-        # 3. Detect Signals (Async in prod, sync here for prototype)
-        context_text = "\\n".join([m['content'] for m in context_messages])
-        analysis = detect_signals(message, context_text)
-        print(f"DEBUG: Signals analysis result: {analysis}")
-        signals = analysis.get('signals', {})
         
-        # 4. Save User Message
+        # 3. Save User Message (signals will be populated by Pattern Agent)
         user_msg = {
             "conversation_id": conv_id,
             "student_id": student_id,
             "role": "user",
             "content": message,
-            "signals": signals
+            "signals": {}
         }
         user_msg_res = supabase.table('messages').insert(user_msg).execute()
         user_msg_id = user_msg_res.data[0]['id'] if user_msg_res.data else None
         
-        # 5. Generate Response
-        from core.inference.pattern_matcher import match_patterns
+        # 4. Process through OPEC 4-Agent Orchestrator
+        # MCP data injection for search mode
+        mcp_data = None
+        if use_search:
+            try:
+                from services.ai_engine import enhance_with_mcp_data
+                mcp_data = enhance_with_mcp_data(message)
+            except Exception:
+                pass  # Gracefully fail if MCP unavailable
         
-        # Get simplified history for pattern matching
-        history_for_patterns = [{"signals": m.get('signals', {})} for m in context_messages]
-        # Add current message signals
-        history_for_patterns.append({"signals": signals})
+        orchestrator = get_orchestrator()
+        ai_response_text, detected_signals, thinking = orchestrator.process_message(
+            message=message,
+            context_messages=context_messages,
+            student_context=student_context,
+            mcp_data=mcp_data
+        )
         
-        active_patterns = match_patterns(history_for_patterns)
-        
-        # Save detected patterns to DB (simplified)
-        if active_patterns and user_msg_id:
-            pattern_ids = [p['id'] for p in active_patterns]
-            # Update user message with patterns
-            supabase.table('messages').update({"patterns": pattern_ids}).eq('id', user_msg_id).execute()
-            
-        ai_response_text = generate_chat_response(message, context_messages, active_patterns, student_context, use_search=use_search)
+        # 5. Update user message with detected signals from Pattern Agent
+        if detected_signals and user_msg_id:
+            supabase.table('messages').update({"signals": detected_signals}).eq('id', user_msg_id).execute()
         
         # 6. Save AI Message
         ai_msg = {
@@ -102,7 +96,9 @@ def send_message():
         
         return jsonify({
             "response": ai_response_text,
-            "signals": signals
+            "signals": detected_signals,
+            "thinking": thinking,
+            "agents_used": ["observation", "pattern", "evaluation", "clarity"]
         }), 200
 
     except Exception as e:

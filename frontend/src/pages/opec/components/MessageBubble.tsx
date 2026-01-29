@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from "framer-motion";
-import { User as UserIcon, Sparkles, RefreshCw, Volume2, Square } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { User as UserIcon, Sparkles, RefreshCw, Volume2, Square, ChevronDown, ChevronUp, Eye, Brain, BarChart3 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import type { Message } from "../types";
 
@@ -13,6 +13,9 @@ interface MessageBubbleProps {
 
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ msg, index, onRetry, formatTimestamp }) => {
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
+
+    const hasThinking = msg.thinking && (msg.thinking.observation || msg.thinking.pattern || msg.thinking.evaluation);
 
     useEffect(() => {
         // Cleanup on unmount
@@ -49,13 +52,85 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ msg, in
                 {/* Avatar - Hidden for AI (Claude style) or minimal */}
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${msg.role === 'user'
                     ? 'bg-slate-200' // User avatar background (neutral)
-                    : 'hidden' // Hide AI avatar completely? Or transparent? Let's hide it to match "blend with background" text focus
+                    : 'hidden' // Hide AI avatar completely
                     }`} aria-hidden="true">
                     {msg.role === 'user' ? <UserIcon className="w-5 h-5 text-slate-600" /> : null}
                 </div>
 
                 {/* Message Content */}
                 <div className="flex flex-col gap-2 flex-1">
+
+                    {/* Thinking Section - ChatGPT Style */}
+                    {msg.role === 'assistant' && hasThinking && (
+                        <div className="mb-2">
+                            <button
+                                onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
+                                className="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-700 transition-colors group"
+                            >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span className="font-medium">Thought for a moment</span>
+                                {isThinkingExpanded ? (
+                                    <ChevronUp className="w-3 h-3" />
+                                ) : (
+                                    <ChevronDown className="w-3 h-3" />
+                                )}
+                            </button>
+
+                            <AnimatePresence>
+                                {isThinkingExpanded && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="overflow-hidden mt-2"
+                                    >
+                                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-3">
+                                            {/* Observation */}
+                                            {msg.thinking?.observation && (
+                                                <div>
+                                                    <div className="flex items-center gap-1.5 text-xs font-medium text-blue-600 mb-1">
+                                                        <Eye className="w-3 h-3" />
+                                                        <span>Observation</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-600 leading-relaxed">
+                                                        {msg.thinking.observation}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Pattern */}
+                                            {msg.thinking?.pattern && (
+                                                <div>
+                                                    <div className="flex items-center gap-1.5 text-xs font-medium text-purple-600 mb-1">
+                                                        <Brain className="w-3 h-3" />
+                                                        <span>Pattern Analysis</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-600 leading-relaxed">
+                                                        {msg.thinking.pattern}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Evaluation */}
+                                            {msg.thinking?.evaluation && (
+                                                <div>
+                                                    <div className="flex items-center gap-1.5 text-xs font-medium text-amber-600 mb-1">
+                                                        <BarChart3 className="w-3 h-3" />
+                                                        <span>Evaluation</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-600 leading-relaxed">
+                                                        {msg.thinking.evaluation}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    )}
+
                     <div className={`py-2 px-1 rounded-2xl ${msg.role === 'user'
                         ? 'bg-indigo-50 text-slate-800 p-4 shadow-sm border border-indigo-100'
                         : 'bg-transparent text-slate-800' // No background, no shadow for AI
@@ -132,3 +207,4 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ msg, in
 });
 
 MessageBubble.displayName = 'MessageBubble';
+

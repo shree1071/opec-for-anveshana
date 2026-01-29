@@ -105,7 +105,7 @@ export function LandingPage() {
                         </motion.h1>
 
                         <motion.p variants={fadeInUp} className="text-xl sm:text-2xl text-slate-600 max-w-3xl mx-auto mb-8 leading-relaxed font-light">
-                            Stop guessing your future. Let our <span className="font-semibold text-slate-800">4 specialized AI agents</span> guide you from confusion to a data-backed career roadmap in minutes.
+                            Stop guessing your future. Our <span className="font-semibold text-slate-800">OPEC methodology</span> uses 4 specialized AI agents—Observation, Pattern, Evaluation, and Clarity—to guide you from confusion to a data-backed career roadmap.
                         </motion.p>
 
                         <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-5 w-full justify-center px-4">
