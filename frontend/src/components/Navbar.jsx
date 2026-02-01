@@ -38,6 +38,9 @@ export function Navbar() {
                         <Link to="/colleges" className="text-slate-600 hover:text-blue-600 font-medium transition-colors">
                             Colleges
                         </Link>
+                        <Link to="/pricing" className="text-slate-600 hover:text-blue-600 font-medium transition-colors">
+                            Pricing
+                        </Link>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -87,6 +90,7 @@ export function Navbar() {
                                 { to: "/about", label: "How it Works" },
                                 { to: "/industry", label: "Industry Insights" },
                                 { to: "/colleges", label: "Colleges" },
+                                { to: "/pricing", label: "Pricing" },
                             ].map((link) => (
                                 <Link
                                     key={link.to}

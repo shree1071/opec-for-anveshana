@@ -13,12 +13,14 @@ interface VoiceModeProps {
         company?: string;
         role?: string;
     };
+    onSessionEnd?: (durationSeconds: number) => void;
 }
 
-export const VoiceMode: React.FC<VoiceModeProps> = ({ isOpen, onClose, userData, initialContext }) => {
+export const VoiceMode: React.FC<VoiceModeProps> = ({ isOpen, onClose, userData, initialContext, onSessionEnd }) => {
     const [hasPermission, setHasPermission] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [connectionId, setConnectionId] = useState<string | null>(null);
+    const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
 
     const {
         status,
@@ -29,6 +31,7 @@ export const VoiceMode: React.FC<VoiceModeProps> = ({ isOpen, onClose, userData,
         onConnect: () => {
             console.log('Connected to ElevenLabs Agent');
             setError(null);
+            setSessionStartTime(Date.now());
         },
         onDisconnect: () => {
             console.log('Disconnected from ElevenLabs Agent');
@@ -116,9 +119,15 @@ export const VoiceMode: React.FC<VoiceModeProps> = ({ isOpen, onClose, userData,
     // Cleanup on close
     useEffect(() => {
         if (!isOpen && status === 'connected') {
+            // Calculate session duration
+            if (sessionStartTime && onSessionEnd) {
+                const durationSeconds = Math.floor((Date.now() - sessionStartTime) / 1000);
+                onSessionEnd(durationSeconds);
+            }
             endSession();
+            setSessionStartTime(null);
         }
-    }, [isOpen, status, endSession]);
+    }, [isOpen, status, endSession, sessionStartTime, onSessionEnd]);
 
     const handleRetry = () => {
         setError(null);

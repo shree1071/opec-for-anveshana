@@ -66,7 +66,8 @@ export const Onboarding = () => {
             });
 
             if (res.ok) {
-                navigate("/opec/chat");
+                // Navigate to chat but trigger the pricing modal via location state
+                navigate("/opec/chat", { state: { showPricingOnboarding: true } });
             } else {
                 console.error("Failed to save profile");
             }

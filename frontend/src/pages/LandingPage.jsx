@@ -4,6 +4,7 @@ import { ArrowRight, Brain, MessageSquare, TrendingUp, Sparkles, Target, Zap, Us
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { SignedIn, SignedOut, SignUpButton } from "@clerk/clerk-react";
+import CustomIcon from "../components/icons/CustomIcon";
 
 const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
@@ -383,6 +384,28 @@ export function LandingPage() {
                         <h2 className="text-3xl font-bold text-slate-900">The OPEC Engine</h2>
                         <p className="text-slate-500 mt-2">How our agents collaborate for you</p>
                     </div>
+
+                    {/* Central Icon Feature */}
+                    <div className="flex justify-center mb-12">
+                        <motion.div
+                            animate={{
+                                y: [0, -10, 0],
+                            }}
+                            transition={{
+                                duration: 3,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                            }}
+                            className="relative"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 rounded-full blur-2xl opacity-30 animate-pulse"></div>
+                            <CustomIcon
+                                size={120}
+                                className="relative drop-shadow-2xl text-slate-800 hover:text-indigo-600 transition-colors duration-500"
+                            />
+                        </motion.div>
+                    </div>
+
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {[
                             { letter: "O", title: "Observation", text: "Deep listening", color: "bg-blue-50 text-blue-600" },

@@ -41,10 +41,13 @@ def create_app():
     from routes.opec.student import student_bp
     from routes.opec.chat import chat_bp
     from routes.opec.auth import auth_bp as opec_auth_bp
+    from routes.opec.interviews import interviews_bp
     
     app.register_blueprint(student_bp, url_prefix='/api/opec/student')
     app.register_blueprint(chat_bp, url_prefix='/api/opec/chat')
     app.register_blueprint(opec_auth_bp, url_prefix='/api/opec/auth')
+    app.register_blueprint(interviews_bp, url_prefix='/api/interviews')
+
     
     # MCP Blueprints
     from routes.mcp_routes import mcp_bp

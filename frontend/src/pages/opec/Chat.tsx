@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useUser } from "@clerk/clerk-react";
+import { useUser, useClerk } from "@clerk/clerk-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "../../components/ui";
-import { Brain, Smile, Meh, Frown, AlertCircle, PanelRight, PanelRightClose, ArrowRight, Minimize2, Maximize2, FileText, Trash2, Download, Activity, Mic, Square, Headphones, Briefcase, Globe, Zap } from "lucide-react";
+import { Brain, AlertCircle, PanelRight, PanelRightClose, ArrowRight, Minimize2, Maximize2, FileText, Trash2, Download, Activity, Mic, Square, Headphones, Briefcase, Globe, Zap, LogOut, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageBubble } from "./components/MessageBubble";
 import { InsightsSidebar } from "./components/InsightsSidebar";
@@ -16,6 +17,9 @@ import type { Message, ToastMessage, Conversation } from "./types";
 
 export const Chat = () => {
     const { user } = useUser();
+    const { signOut } = useClerk();
+    const navigate = useNavigate();
+    const location = useLocation();
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState("");
     const [loading, setLoading] = useState(false);
@@ -40,6 +44,9 @@ export const Chat = () => {
     const [currentAgent, setCurrentAgent] = useState<'observation' | 'pattern' | 'evaluation' | 'clarity' | 'complete' | null>(null);
     const [thinkingData, setThinkingData] = useState<{ observation?: string; pattern?: string; evaluation?: string }>({});
     const [voiceContext, setVoiceContext] = useState<{ interviewMode?: boolean; company?: string; role?: string }>({});
+
+    // User Menu
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
     // Conversation State
     const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -683,21 +690,30 @@ export const Chat = () => {
                                 <p className="text-[10px] text-slate-500 font-medium mt-0.5">Career Intelligence System</p>
                             </div>
                         </div>
-
-                        <Button
-                            onClick={() => { window.location.href = '/simulate'; }}
-                            className="ml-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 h-auto rounded-full"
-                        >
-                            Start Simulation
-                        </Button>
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <Button
+                            onClick={() => navigate(location.pathname, { state: { showPricingOnboarding: true } })}
+                            variant="secondary"
+                            className="px-4 py-2.5 h-auto rounded-lg shadow-sm flex items-center gap-2"
+                        >
+                            <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+                            Plans
+                        </Button>
                         <Button
                             onClick={() => { window.location.href = '/simulate'; }}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 h-auto rounded-lg font-medium shadow-sm hover:shadow-md transition-all"
                         >
                             Start Simulation
+                        </Button>
+
+                        <Button
+                            onClick={() => { window.location.href = '/opec/mock-interview'; }}
+                            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-6 py-2.5 h-auto rounded-lg font-medium shadow-sm hover:shadow-md transition-all flex items-center gap-2"
+                        >
+                            <Mic className="w-4 h-4" />
+                            Mock Interview
                         </Button>
 
                         {/* Toggle Right Sidebar */}
@@ -708,8 +724,55 @@ export const Chat = () => {
                         >
                             <Activity className="w-5 h-5" />
                         </button>
-                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                            {user?.firstName?.[0] || "U"}
+
+                        {/* User Menu */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                                className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xs hover:shadow-lg transition-all"
+                            >
+                                {user?.firstName?.[0] || "U"}
+                            </button>
+
+                            <AnimatePresence>
+                                {isUserMenuOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                        className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-50"
+                                    >
+                                        <div className="p-3 border-b border-slate-100 bg-slate-50">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                                                    {user?.firstName?.[0] || "U"}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-semibold text-slate-900 text-sm truncate">
+                                                        {user?.firstName} {user?.lastName}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500 truncate">
+                                                        {user?.primaryEmailAddress?.emailAddress}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-1">
+                                            <button
+                                                onClick={() => {
+                                                    setIsUserMenuOpen(false);
+                                                    signOut();
+                                                }}
+                                                className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            >
+                                                <LogOut className="w-4 h-4" />
+                                                <span>Sign Out</span>
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </div>
                 </header>
