@@ -119,12 +119,14 @@ export const VoiceMode: React.FC<VoiceModeProps> = ({ isOpen, onClose, userData,
     // Cleanup on close
     useEffect(() => {
         if (!isOpen && status === 'connected') {
-            // Calculate session duration
-            if (sessionStartTime && onSessionEnd) {
-                const durationSeconds = Math.floor((Date.now() - sessionStartTime) / 1000);
-                onSessionEnd(durationSeconds);
-            }
             endSession();
+        }
+
+        // Call onSessionEnd when modal closes if we had a session
+        if (!isOpen && sessionStartTime && onSessionEnd) {
+            const durationSeconds = Math.floor((Date.now() - sessionStartTime) / 1000);
+            console.log('Interview ended, duration:', durationSeconds, 'seconds');
+            onSessionEnd(durationSeconds);
             setSessionStartTime(null);
         }
     }, [isOpen, status, endSession, sessionStartTime, onSessionEnd]);

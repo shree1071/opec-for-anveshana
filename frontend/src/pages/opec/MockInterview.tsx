@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { VoiceMode } from './components/VoiceMode';
 import { InterviewSetupModal } from './components/InterviewSetupModal';
-import { Mic, History, ArrowLeft, Calendar, Clock, Building2, Trash2, TrendingUp, Award, Target, Lightbulb } from 'lucide-react';
+import { InterviewReportModal } from './components/InterviewReportModal';
+import {
+    Mic, History, ArrowLeft, Clock, Building2, Trash2,
+    Play, Sparkles, ChevronRight, Calendar
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
@@ -26,17 +30,25 @@ interface Report {
     communication_score: number;
     technical_score: number;
     confidence_score: number;
+    problem_solving_score?: number;
+    cultural_fit_score?: number;
     strengths?: string[];
     weaknesses?: string[];
     key_insights: string;
     recommendations: string;
+    interviewer_notes?: string;
+    next_steps?: string[];
+    estimated_readiness?: string;
+}
+
+interface SessionData {
+    company: string;
+    role: string;
+    duration_seconds: number;
 }
 
 interface ReportData {
-    session?: {
-        company: string;
-        role: string;
-    };
+    session?: SessionData;
     report?: Report;
 }
 
@@ -48,34 +60,28 @@ export function MockInterview() {
     const [sessions, setSessions] = useState<Session[]>([]);
     const [selectedSession, setSelectedSession] = useState<string | number | null>(null);
     const [reportData, setReportData] = useState<ReportData | null>(null);
-    const [showHistory, setShowHistory] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
     useEffect(() => {
         fetchHistory();
     }, []);
 
     const fetchHistory = async () => {
+        if (!user?.id) return;
         setIsLoading(true);
-        setError(null);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/interviews/sessions`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/interviews/sessions`, {
                 headers: { 'X-Clerk-User-Id': user?.id ?? '' }
             });
 
-            if (!response.ok) {
-                throw new Error(`Failed to fetch history: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error('Failed to fetch');
 
             const data = await response.json();
-            setSessions(data);
             console.log('Fetched sessions:', data);
+            setSessions(data);
         } catch (error) {
             console.error('Error fetching history:', error);
-            setError('Failed to load interview history. Please check if database tables exist.');
-            showToast('Failed to load history', 'error');
         } finally {
             setIsLoading(false);
         }
@@ -83,14 +89,15 @@ export function MockInterview() {
 
     const handleStartInterview = (company: string, role: string) => {
         setVoiceContext({ interviewMode: true, company, role });
+        setIsSetupOpen(false);
         setIsVoiceActive(true);
     };
 
     const handleInterviewEnd = async (durationSeconds: number) => {
-        try {
-            console.log('Saving session:', { company: voiceContext.company, role: voiceContext.role, duration: durationSeconds });
+        console.log('Interview ended with duration:', durationSeconds);
 
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/interviews/sessions`, {
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/interviews/sessions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -103,17 +110,19 @@ export function MockInterview() {
                 })
             });
 
-            if (!response.ok) {
-                throw new Error(`Failed to save session: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error('Failed to save session');
 
             const result = await response.json();
             console.log('Session saved:', result);
-            showToast('Interview session saved successfully!', 'success');
+
+            // Auto-open report after interview
+            if (result.session_id) {
+                await handleViewReport(result.session_id);
+            }
+
             fetchHistory();
         } catch (error) {
             console.error('Error saving session:', error);
-            showToast('Failed to save interview. Check database setup.', 'error');
         }
 
         setIsVoiceActive(false);
@@ -122,40 +131,34 @@ export function MockInterview() {
     const handleViewReport = async (sessionId: string | number) => {
         setIsLoading(true);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/interviews/sessions/${sessionId}/report`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/interviews/sessions/${sessionId}/report`, {
                 headers: { 'X-Clerk-User-Id': user?.id ?? '' }
             });
 
-            if (!response.ok) {
-                throw new Error(`Failed to fetch report: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error('Failed to fetch report');
 
             const data = await response.json();
             console.log('Report data:', data);
             setReportData(data);
             setSelectedSession(sessionId);
+            setIsReportModalOpen(true);
         } catch (error) {
             console.error('Error fetching report:', error);
-            showToast('Failed to load report', 'error');
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const showToast = (message: string, type: 'success' | 'error') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
     };
 
     const handleDeleteSession = async (sessionId: string | number) => {
         if (!confirm('Delete this interview session?')) return;
 
         try {
-            await fetch(`${import.meta.env.VITE_API_URL}/interviews/sessions/${sessionId}`, {
+            await fetch(`${import.meta.env.VITE_API_URL}/api/interviews/sessions/${sessionId}`, {
                 method: 'DELETE',
                 headers: { 'X-Clerk-User-Id': user?.id ?? '' }
             });
-            fetchHistory();
+
+            setSessions(sessions.filter(s => s.id !== sessionId));
             if (selectedSession === sessionId) {
                 setSelectedSession(null);
                 setReportData(null);
@@ -165,254 +168,198 @@ export function MockInterview() {
         }
     };
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 relative">
-            {/* Toast Notification */}
-            <AnimatePresence>
-                {toast && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -50 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -50 }}
-                        className="fixed top-4 right-4 z-50"
-                    >
-                        <div className={`px-6 py-3 rounded-lg shadow-lg ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white font-medium flex items-center gap-2`}>
-                            {toast.type === 'success' ? '✓' : '✗'} {toast.message}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+    const formatDuration = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+    };
 
-            {/* Header */}
-            <div className="bg-white border-b border-slate-200">
-                <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+    const totalMinutes = Math.floor(sessions.reduce((acc, s) => acc + (s.duration_seconds || 0), 0) / 60);
+
+    return (
+        <div className="min-h-screen bg-[#faf9f7]">
+            {/* Minimal Header */}
+            <header className="sticky top-0 z-40 bg-[#faf9f7]/80 backdrop-blur-lg border-b border-stone-200/60">
+                <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Link to="/opec/dashboard" className="text-slate-600 hover:text-slate-900">
+                        <Link
+                            to="/opec/dashboard"
+                            className="p-2 -ml-2 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors"
+                        >
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
-                        <div>
-                            <h1 className="text-2xl font-bold text-slate-900">Mock Interview</h1>
-                            <p className="text-sm text -slate-600">AI-powered placement preparation</p>
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                                <Mic className="w-4 h-4 text-white" />
+                            </div>
+                            <span className="font-semibold text-stone-900">Mock Interview</span>
                         </div>
                     </div>
 
                     <button
-                        onClick={() => setShowHistory(!showHistory)}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+                        onClick={() => setIsSetupOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-full text-sm font-medium transition-colors"
                     >
-                        <History className="w-4 h-4" />
-                        {showHistory ? 'Hide' : 'Show'} History
+                        <Play className="w-4 h-4" />
+                        New Interview
                     </button>
                 </div>
-            </div>
+            </header>
 
-            <div className="max-w-7xl mx-auto p-6 flex gap-6">
-                {/* Main Content */}
-                <div className="flex-1">
-                    {selectedSession && reportData ? (
-                        /* Report View */
-                        <div className="bg-white rounded-2xl p-8">
-                            <button
-                                onClick={() => { setSelectedSession(null); setReportData(null); }}
-                                className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6"
-                            >
-                                <ArrowLeft className="w-4 h-4" />
-                                Back to Interviews
-                            </button>
+            <main className="max-w-5xl mx-auto px-6 py-8">
+                {/* Hero Section */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-10 text-center"
+                >
+                    <div className="inline-block relative group cursor-pointer" onClick={() => setIsSetupOpen(true)}>
+                        <div className="absolute inset-0 bg-stone-900/20 rounded-full blur-xl group-hover:blur-2xl transition-all duration-300" />
+                        <div className="relative w-24 h-24 bg-gradient-to-br from-stone-800 to-stone-900 rounded-full flex items-center justify-center shadow-2xl group-hover:scale-105 transition-transform duration-300 ring-4 ring-white">
+                            <Mic className="w-10 h-10 text-white" />
+                        </div>
+                        <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center border-2 border-white">
+                            <Play className="w-4 h-4 text-white ml-0.5" />
+                        </div>
+                    </div>
 
-                            <div className="mb-8">
-                                <h2 className="text-3xl font-bold text-slate-900 mb-2">{reportData.session?.role}</h2>
-                                <p className="text-slate-600">{reportData.session?.company}</p>
-                            </div>
+                    <h1 className="text-3xl font-semibold text-stone-900 mt-6 mb-2">
+                        Ready to practice?
+                    </h1>
+                    <p className="text-stone-500 text-lg max-w-md mx-auto">
+                        Click the microphone to start a realistic AI mock interview
+                    </p>
+                </motion.div>
 
-                            {reportData.report ? (
-                                <>
-                                    {/* Score Cards */}
-                                    <div className="grid grid-cols-4 gap-4 mb-8">
-                                        {[
-                                            { label: 'Overall', score: reportData.report.overall_score, icon: Award, color: 'indigo' },
-                                            { label: 'Communication', score: reportData.report.communication_score, icon: TrendingUp, color: 'blue' },
-                                            { label: 'Technical', score: reportData.report.technical_score, icon: Target, color: 'purple' },
-                                            { label: 'Confidence', score: reportData.report.confidence_score, icon: Lightbulb, color: 'emerald' }
-                                        ].map(({ label, score, icon: Icon, color }) => (
-                                            <div key={label} className={`bg-${color}-50 p-6 rounded-xl border border-${color}-100`}>
-                                                <Icon className={`w-6 h-6 text-${color}-600 mb-2`} />
-                                                <div className={`text-4xl font-bold text-${color}-600 mb-1`}>{score}</div>
-                                                <div className="text-sm text-slate-600">{label}</div>
-                                            </div>
-                                        ))}
-                                    </div>
+                {/* Stats Cards */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="grid grid-cols-3 gap-4 mb-10"
+                >
+                    <div className="bg-white rounded-2xl p-5 border border-stone-200/60 shadow-sm">
+                        <div className="text-3xl font-semibold text-stone-900 mb-1">{sessions.length}</div>
+                        <div className="text-sm text-stone-500">Interviews Completed</div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-5 border border-stone-200/60 shadow-sm">
+                        <div className="text-3xl font-semibold text-stone-900 mb-1">{totalMinutes}</div>
+                        <div className="text-sm text-stone-500">Minutes Practiced</div>
+                    </div>
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-5 border border-amber-200/60">
+                        <div className="flex items-center gap-2 mb-1">
+                            <Sparkles className="w-5 h-5 text-amber-500" />
+                            <span className="text-lg font-semibold text-amber-700">AI Coach</span>
+                        </div>
+                        <div className="text-sm text-amber-600">Real-time feedback</div>
+                    </div>
+                </motion.div>
 
-                                    {/* Strengths */}
-                                    <div className="mb-8">
-                                        <h3 className="text-xl font-bold text-slate-900 mb-4">✅ Strengths</h3>
-                                        <ul className="space-y-2">
-                                            {reportData.report.strengths?.map((strength, i) => (
-                                                <li key={i} className="flex items-start gap-3 p-3 bg-green-50 rounded-lg border border-green-100">
-                                                    <span className="text-green-600 font-bold">•</span>
-                                                    <span className="text-slate-700">{strength}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
+                {/* Quick Start */}
+                {sessions.length === 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="bg-white rounded-2xl p-8 border border-stone-200/60 shadow-sm text-center mb-10"
+                    >
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                            <Mic className="w-8 h-8 text-white" />
+                        </div>
+                        <h2 className="text-xl font-semibold text-stone-900 mb-2">Start your first interview</h2>
+                        <p className="text-stone-500 mb-6 max-w-md mx-auto">
+                            Choose a company and role to practice. Our AI interviewer will guide you through realistic questions.
+                        </p>
+                        <button
+                            onClick={() => setIsSetupOpen(true)}
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-stone-900 hover:bg-stone-800 text-white rounded-full font-medium transition-colors"
+                        >
+                            <Play className="w-5 h-5" />
+                            Start Interview
+                        </button>
+                    </motion.div>
+                )}
 
-                                    {/* Weaknesses */}
-                                    <div className="mb-8">
-                                        <h3 className="text-xl font-bold text-slate-900 mb-4">🎯 Areas to Improve</h3>
-                                        <ul className="space-y-2">
-                                            {reportData.report.weaknesses?.map((weakness, i) => (
-                                                <li key={i} className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg border border-amber-100">
-                                                    <span className="text-amber-600 font-bold">•</span>
-                                                    <span className="text-slate-700">{weakness}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
+                {/* Interview History */}
+                {sessions.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        <div className="flex items-center gap-2 mb-4">
+                            <History className="w-5 h-5 text-stone-400" />
+                            <h2 className="text-lg font-semibold text-stone-900">Recent Sessions</h2>
+                        </div>
 
-                                    {/* Insights */}
-                                    <div className="bg-indigo-50 p-6 rounded-xl mb-8 border border-indigo-100">
-                                        <h3 className="text-xl font-bold text-slate-900 mb-3">💡 Key Insights</h3>
-                                        <p className="text-slate-700 leading-relaxed">{reportData.report.key_insights}</p>
-                                    </div>
-
-                                    {/* Recommendations */}
-                                    <div className="bg-purple-50 p-6 rounded-xl border border-purple-100">
-                                        <h3 className="text-xl font-bold text-slate-900 mb-3">🚀 Next Steps</h3>
-                                        <p className="text-slate-700 leading-relaxed whitespace-pre-line">{reportData.report.recommendations}</p>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="text-center py-12 text-slate-500">
-                                    Report is being generated. Check back in a moment!
+                        <div className="space-y-3">
+                            {isLoading && sessions.length === 0 ? (
+                                <div className="bg-white rounded-xl p-8 text-center border border-stone-200/60">
+                                    <div className="animate-spin w-6 h-6 border-2 border-stone-300 border-t-stone-600 rounded-full mx-auto" />
                                 </div>
+                            ) : (
+                                <AnimatePresence>
+                                    {sessions.map((session, index) => (
+                                        <motion.div
+                                            key={session.id}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 10 }}
+                                            transition={{ delay: index * 0.05 }}
+                                            onClick={() => handleViewReport(session.id)}
+                                            className="group bg-white rounded-xl p-4 border border-stone-200/60 hover:border-stone-300 hover:shadow-md cursor-pointer transition-all"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-stone-100 to-stone-200 flex items-center justify-center">
+                                                        <Building2 className="w-5 h-5 text-stone-600" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-medium text-stone-900">{session.company}</div>
+                                                        <div className="text-sm text-stone-500">{session.role}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-4">
+                                                    <div className="text-right">
+                                                        <div className="flex items-center gap-1 text-sm text-stone-600">
+                                                            <Clock className="w-3.5 h-3.5" />
+                                                            {formatDuration(session.duration_seconds)}
+                                                        </div>
+                                                        <div className="flex items-center gap-1 text-xs text-stone-400">
+                                                            <Calendar className="w-3 h-3" />
+                                                            {formatDistanceToNow(new Date(session.session_date), { addSuffix: true })}
+                                                        </div>
+                                                    </div>
+
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteSession(session.id);
+                                                        }}
+                                                        className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+
+                                                    <ChevronRight className="w-5 h-5 text-stone-300 group-hover:text-stone-500 transition-colors" />
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
                             )}
                         </div>
-                    ) : (
-                        /* Landing View */
-                        <div className="bg-white rounded-2xl p-12 text-center">
-                            <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                                <Mic className="w-12 h-12 text-white" />
-                            </div>
-
-                            <h2 className="text-3xl font-bold text-slate-900 mb-4">
-                                Ready for Your Interview?
-                            </h2>
-                            <p className="text-slate-600 mb-8 max-w-md mx-auto">
-                                Practice with our AI interviewer. Get real-time conversation and detailed feedback after each session.
-                            </p>
-
-                            <button
-                                onClick={() => setIsSetupOpen(true)}
-                                className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-lg shadow-lg shadow-indigo-500/30 transition"
-                            >
-                                Start New Interview
-                            </button>
-
-                            <div className="mt-12 grid grid-cols-3 gap-8 max-w-2xl mx-auto">
-                                <div>
-                                    <div className="text-3xl font-bold text-indigo-600">{sessions.length}</div>
-                                    <div className="text-sm text-slate-600">Interviews Done</div>
-                                </div>
-                                <div>
-                                    <div className="text-3xl font-bold text-indigo-600">
-                                        {Math.floor(sessions.reduce((acc, s) => acc + (s.duration_seconds || 0), 0) / 60) || 0}
-                                    </div>
-                                    <div className="text-sm text-slate-600">Minutes Practiced</div>
-                                </div>
-                                <div>
-                                    <div className="text-3xl font-bold text-indigo-600">AI</div>
-                                    <div className="text-sm text-slate-600">Powered Analysis</div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* History Sidebar */}
-                {showHistory && (
-                    <div className="w-80 bg-white rounded-2xl p-6 h-fit max-h-[800px] overflow-y-auto shadow-lg">
-                        <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                            <History className="w-5 h-5 text-indigo-600" />
-                            Interview History
-                        </h3>
-
-                        {isLoading ? (
-                            <div className="flex items-center justify-center py-12">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                            </div>
-                        ) : error ? (
-                            <div className="text-center py-8">
-                                <div className="text-red-500 text-sm mb-2">❌ {error}</div>
-                                <button
-                                    onClick={fetchHistory}
-                                    className="text-xs text-indigo-600 hover:text-indigo-700 underline"
-                                >
-                                    Try Again
-                                </button>
-                            </div>
-                        ) : sessions.length === 0 ? (
-                            <div className="text-center py-8">
-                                <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                                    <Mic className="w-8 h-8 text-indigo-400" />
-                                </div>
-                                <p className="text-slate-500 text-sm">
-                                    No interviews yet.<br />Start your first one!
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {sessions.map((session) => (
-                                    <div
-                                        key={session.id}
-                                        className="group p-4 bg-slate-50 hover:bg-indigo-50 rounded-xl cursor-pointer transition border border-transparent hover:border-indigo-200 relative"
-                                        onClick={() => handleViewReport(session.id)}
-                                    >
-                                        <div className="flex items-start justify-between mb-2">
-                                            <div className="flex-1">
-                                                <div className="font-semibold text-slate-900 text-sm mb-1">
-                                                    {session.role}
-                                                </div>
-                                                <div className="flex items-center gap-1 text-xs text-slate-600">
-                                                    <Building2 className="w-3 h-3" />
-                                                    {session.company}
-                                                </div>
-                                            </div>
-
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteSession(session.id);
-                                                }}
-                                                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded transition"
-                                            >
-                                                <Trash2 className="w-4 h-4 text-red-600" />
-                                            </button>
-                                        </div>
-
-                                        <div className="flex items-center gap-3 text-xs text-slate-500">
-                                            <div className="flex items-center gap-1">
-                                                <Clock className="w-3 h-3" />
-                                                {Math.floor((session.duration_seconds || 0) / 60)}m
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <Calendar className="w-3 h-3" />
-                                                {formatDistanceToNow(new Date(session.session_date), { addSuffix: true })}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    </motion.div>
                 )}
-            </div>
+            </main>
 
             {/* Modals */}
             <InterviewSetupModal
                 isOpen={isSetupOpen}
                 onClose={() => setIsSetupOpen(false)}
                 onStart={handleStartInterview}
-                onBrowseJobs={() => {/* TODO: Implement job browsing */ }}
+                onBrowseJobs={() => { }}
             />
 
             <VoiceMode
@@ -421,6 +368,27 @@ export function MockInterview() {
                 userData={user}
                 initialContext={voiceContext}
                 onSessionEnd={handleInterviewEnd}
+            />
+
+            {/* Interview Report Modal */}
+            <InterviewReportModal
+                isOpen={isReportModalOpen}
+                onClose={() => {
+                    setIsReportModalOpen(false);
+                    setSelectedSession(null);
+                    setReportData(null);
+                }}
+                report={reportData?.report ? {
+                    ...reportData.report,
+                    strengths: reportData.report.strengths || [],
+                    weaknesses: reportData.report.weaknesses || []
+                } : null}
+                session={{
+                    company: reportData?.session?.company || voiceContext.company || '',
+                    role: reportData?.session?.role || voiceContext.role || '',
+                    duration_seconds: reportData?.session?.duration_seconds ||
+                        sessions.find(s => s.id === selectedSession)?.duration_seconds || 0
+                }}
             />
         </div>
     );

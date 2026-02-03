@@ -2,17 +2,20 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser, useClerk } from "@clerk/clerk-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "../../components/ui";
-import { Brain, AlertCircle, PanelRight, PanelRightClose, ArrowRight, Minimize2, Maximize2, FileText, Trash2, Download, Activity, Mic, Square, Headphones, Briefcase, Globe, Zap, LogOut, User } from "lucide-react";
+import { Brain, AlertCircle, PanelRight, PanelRightClose, ArrowRight, Minimize2, Maximize2, FileText, Trash2, Download, Activity, Mic, Square, Headphones, Briefcase, Globe, Zap, LogOut, User, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageBubble } from "./components/MessageBubble";
 import { InsightsSidebar } from "./components/InsightsSidebar";
 import { CommandPalette, type CommandAction } from "./components/CommandPalette";
 import { VoiceMode } from "./components/VoiceMode";
 import { InterviewSetupModal } from "./components/InterviewSetupModal";
+import { InterviewReportModal } from "./components/InterviewReportModal";
+import { InterviewHistorySidebar } from "./components/InterviewHistorySidebar";
 import { AgentProgress } from "./components/AgentProgress";
 import LiveJobMarket from "../../components/LiveJobMarket";
 
 import { ChatHistorySidebar } from "./components/ChatHistorySidebar";
+import { PricingModal } from "./components/PricingModal";
 import type { Message, ToastMessage, Conversation } from "./types";
 
 export const Chat = () => {
@@ -47,12 +50,19 @@ export const Chat = () => {
 
     // User Menu
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const [isPricingOpen, setIsPricingOpen] = useState(false);
 
     // Conversation State
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
     const [forceNewChat, setForceNewChat] = useState(false);
     const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+    // Interview State
+    const [interviewSessions, setInterviewSessions] = useState<any[]>([]);
+    const [selectedReport, setSelectedReport] = useState<any>(null);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [showInterviewHistory, setShowInterviewHistory] = useState(false);
 
     const handleInterviewStart = (company: string, role: string) => {
         setVoiceContext({
@@ -62,6 +72,86 @@ export const Chat = () => {
         });
         setIsJobMarketOpen(false);
         setIsVoiceModeOpen(true);
+    };
+
+    const handleInterviewEnd = async (durationSeconds: number) => {
+        try {
+            console.log('Saving interview session:', { company: voiceContext.company, role: voiceContext.role, duration: durationSeconds });
+
+            const response = await fetch(`${API_URL}/interviews/sessions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Clerk-User-Id': user?.id ?? ''
+                },
+                body: JSON.stringify({
+                    company: voiceContext.company,
+                    role: voiceContext.role,
+                    duration: durationSeconds
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('Session saved:', result);
+                showToast('Interview saved! Generating report...', 'success');
+
+                // Fetch the report - backend returns session_id not id
+                if (result.session_id) {
+                    setTimeout(async () => {
+                        await handleViewReport(result.session_id);
+                    }, 1000);
+                }
+
+                fetchInterviewSessions();
+            } else {
+                const errorData = await response.json();
+                console.error('Failed to save session:', errorData);
+                showToast('Failed to save interview', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving interview:', error);
+            showToast('Failed to save interview', 'error');
+        }
+    };
+
+    const handleViewReport = async (sessionId: string | number) => {
+        try {
+            console.log('Fetching report for session:', sessionId);
+            const response = await fetch(`${API_URL}/api/interviews/sessions/${sessionId}/report`, {
+                headers: { 'X-Clerk-User-Id': user?.id ?? '' }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Report data received:', data);
+                setSelectedReport(data);
+                setIsReportModalOpen(true);
+            } else {
+                const errorData = await response.json();
+                console.error('Failed to fetch report:', errorData);
+                showToast('Failed to load report', 'error');
+            }
+        } catch (error) {
+            console.error('Error fetching report:', error);
+            showToast('Failed to load report', 'error');
+        }
+    };
+
+    const handleDeleteSession = async (sessionId: string | number) => {
+        if (!confirm('Delete this interview session?')) return;
+
+        try {
+            await fetch(`${API_URL}/api/interviews/sessions/${sessionId}`, {
+                method: 'DELETE',
+                headers: { 'X-Clerk-User-Id': user?.id ?? '' }
+            });
+            fetchInterviewSessions();
+            showToast('Interview deleted', 'success');
+        } catch (error) {
+            console.error('Error deleting session:', error);
+            showToast('Failed to delete interview', 'error');
+        }
     };
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -99,6 +189,21 @@ export const Chat = () => {
         }
     }, [user, API_URL]);
 
+    const fetchInterviewSessions = useCallback(async () => {
+        if (!user) return;
+        try {
+            const res = await fetch(`${API_URL}/api/interviews/sessions`, {
+                headers: { 'X-Clerk-User-Id': user.id }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setInterviewSessions(data || []);
+            }
+        } catch (error) {
+            console.error("Failed to fetch interview sessions", error);
+        }
+    }, [user, API_URL]);
+
     // Fetch History
     const fetchHistory = useCallback(async () => {
         if (!user) return;
@@ -126,12 +231,13 @@ export const Chat = () => {
     useEffect(() => {
         if (user) {
             fetchConversations();
+            fetchInterviewSessions();
             // Also fetch history for default/active chat if no ID selected yet
             if (!activeConversationId) {
                 fetchHistory();
             }
         }
-    }, [user, fetchConversations, fetchHistory, activeConversationId]);
+    }, [user, fetchConversations, fetchInterviewSessions, fetchHistory, activeConversationId]);
 
     const handleSelectConversation = async (id: string) => {
         setActiveConversationId(id);
@@ -669,67 +775,49 @@ export const Chat = () => {
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col relative z-0 min-w-0 bg-[#F9F8F6]">
-                {/* Header */}
-                <header className="h-16 border-b border-slate-100 flex items-center justify-between px-4 bg-white/80 backdrop-blur-md z-10 shrink-0">
+                {/* Header - Transparent ChatGPT Style */}
+                <header className="h-12 flex items-center justify-between px-4 bg-transparent z-10 shrink-0">
                     <div className="flex items-center gap-3">
                         {/* Toggle History Sidebar */}
                         <button
                             onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                            className="p-2 -ml-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                            className="p-2 -ml-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                             title="Toggle Chat History"
                         >
                             <PanelRight className={`w-5 h-5 transform ${isHistoryOpen ? 'rotate-180' : ''}`} />
                         </button>
 
                         <div className="flex items-center gap-2">
-                            <div className="bg-indigo-600 p-1.5 rounded-lg">
-                                <Brain className="w-5 h-5 text-white" />
+                            <div className="bg-slate-800 p-1.5 rounded-lg">
+                                <Brain className="w-4 h-4 text-white" />
                             </div>
-                            <div>
-                                <h1 className="font-bold text-slate-800 leading-none">OPEC Agents</h1>
-                                <p className="text-[10px] text-slate-500 font-medium mt-0.5">Career Intelligence System</p>
-                            </div>
+                            <span className="font-semibold text-slate-800">OPEC</span>
                         </div>
                     </div>
 
+                    {/* Get Plus Button - Center */}
+                    <button
+                        onClick={() => setIsPricingOpen(true)}
+                        className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-full shadow-sm transition-colors"
+                    >
+                        <Sparkles className="w-4 h-4" />
+                        Get Plus
+                    </button>
+
                     <div className="flex items-center gap-2">
-                        <Button
-                            onClick={() => navigate(location.pathname, { state: { showPricingOnboarding: true } })}
-                            variant="secondary"
-                            className="px-4 py-2.5 h-auto rounded-lg shadow-sm flex items-center gap-2"
-                        >
-                            <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-                            Plans
-                        </Button>
-                        <Button
-                            onClick={() => { window.location.href = '/simulate'; }}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 h-auto rounded-lg font-medium shadow-sm hover:shadow-md transition-all"
-                        >
-                            Start Simulation
-                        </Button>
-
-                        <Button
-                            onClick={() => { window.location.href = '/opec/mock-interview'; }}
-                            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-6 py-2.5 h-auto rounded-lg font-medium shadow-sm hover:shadow-md transition-all flex items-center gap-2"
-                        >
-                            <Mic className="w-4 h-4" />
-                            Mock Interview
-                        </Button>
-
-                        {/* Toggle Right Sidebar */}
                         <button
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className={`p-2 rounded-lg transition-all ${isSidebarOpen ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                            className={`p-2 rounded-lg transition-all ${isSidebarOpen ? 'bg-slate-100 text-slate-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                             title="Toggle Insights"
                         >
                             <Activity className="w-5 h-5" />
                         </button>
 
-                        {/* User Menu */}
+                        {/* User Avatar */}
                         <div className="relative">
                             <button
                                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                                className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xs hover:shadow-lg transition-all"
+                                className="w-8 h-8 bg-gradient-to-br from-slate-600 to-slate-800 rounded-full flex items-center justify-center text-white font-bold text-xs hover:shadow-lg transition-all"
                             >
                                 {user?.firstName?.[0] || "U"}
                             </button>
@@ -744,7 +832,7 @@ export const Chat = () => {
                                     >
                                         <div className="p-3 border-b border-slate-100 bg-slate-50">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                                                <div className="w-10 h-10 bg-gradient-to-br from-slate-600 to-slate-800 rounded-full flex items-center justify-center text-white font-bold">
                                                     {user?.firstName?.[0] || "U"}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
@@ -801,6 +889,7 @@ export const Chat = () => {
                     }}
                     userData={user}
                     initialContext={voiceContext}
+                    onSessionEnd={handleInterviewEnd}
                 />
 
                 <InterviewSetupModal
@@ -814,6 +903,11 @@ export const Chat = () => {
                     isOpen={isCommandPaletteOpen}
                     onClose={() => setIsCommandPaletteOpen(false)}
                     actions={powerUserActions}
+                />
+
+                <PricingModal
+                    isOpen={isPricingOpen}
+                    onClose={() => setIsPricingOpen(false)}
                 />
 
                 {/* Zen Mode Toggle */}
@@ -837,14 +931,25 @@ export const Chat = () => {
 
                     {/* Persistent Voice Mode Toggle (Top Right) */}
                     <div className="absolute top-4 right-6 z-10 pointer-events-none">
-                        {/* Wrapped in pointer-events-none container to not block clicks, button has auto */}
-                        <button
-                            onClick={() => setIsInterviewSetupOpen(true)}
-                            className="pointer-events-auto flex items-center gap-2 px-3 py-1.5 bg-white/80 backdrop-blur-sm border border-indigo-100 text-indigo-600 rounded-full shadow-sm hover:shadow-md hover:bg-indigo-50 transition-all text-sm font-medium"
-                        >
-                            <Headphones className="w-4 h-4" />
-                            <span>Interview Mode</span>
-                        </button>
+                        <div className="pointer-events-auto flex gap-2">
+                            <button
+                                onClick={() => setShowInterviewHistory(!showInterviewHistory)}
+                                className={`p-2 rounded-full transition-all shadow-sm ${showInterviewHistory
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-white/80 backdrop-blur-sm text-slate-600 hover:bg-slate-100 border border-slate-200'
+                                    }`}
+                                title="Interview History"
+                            >
+                                <Briefcase className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={() => setIsInterviewSetupOpen(true)}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-white/80 backdrop-blur-sm border border-indigo-100 text-indigo-600 rounded-full shadow-sm hover:shadow-md hover:bg-indigo-50 transition-all text-sm font-medium"
+                            >
+                                <Headphones className="w-4 h-4" />
+                                <span>Interview Mode</span>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Messages Scroll Area */}
@@ -854,30 +959,14 @@ export const Chat = () => {
                         className="flex-1 overflow-y-auto overflow-x-hidden px-4 scroll-smooth"
                     >
                         <div className="max-w-3xl mx-auto space-y-8 py-8">
-                            {/* Empty State Welcome */}
                             {messages.length === 0 && !loading && (
-                                <div className="text-center py-12 space-y-4 select-none">
-                                    <div className="w-16 h-16 mx-auto bg-gradient-to-br from-[#d97757] to-[#e89a7d] rounded-2xl flex items-center justify-center shadow-sm">
-                                        <Brain className="w-8 h-8 text-white" />
-                                    </div>
-                                    <h2 className="font-serif text-3xl text-slate-800">Hi {user?.firstName}!</h2>
-                                    <p className="text-slate-500 max-w-md mx-auto leading-relaxed">
-                                        I'm your OPEC Career Agent. I analyze your profile to give strategic advice.
-                                        Start a new chat or continue below.
+                                <div className="flex flex-col items-center justify-center min-h-[50vh] text-center py-12 space-y-8 select-none">
+                                    <h2 className="font-serif text-4xl text-slate-800 tracking-tight">
+                                        What's on your mind, {user?.firstName || 'there'}?
+                                    </h2>
+                                    <p className="text-slate-400 max-w-md mx-auto leading-relaxed text-lg">
+                                        Ask me anything about your career path.
                                     </p>
-
-                                    <motion.button
-                                        initial={{ scale: 0.9, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        whileHover={{ scale: 1.05 }}
-                                        onClick={() => setIsInterviewSetupOpen(true)}
-                                        className="mt-6 mx-auto flex items-center gap-3 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-full shadow-sm hover:shadow-md transition-all group"
-                                    >
-                                        <div className="p-1.5 bg-indigo-50 rounded-full text-indigo-600">
-                                            <Headphones className="w-4 h-4" />
-                                        </div>
-                                        <span className="font-medium">Try Voice Interview</span>
-                                    </motion.button>
                                 </div>
                             )}
 
@@ -901,65 +990,43 @@ export const Chat = () => {
                         </div>
                     </div>
 
-                    {/* Input Area - Claude Style */}
+                    {/* Input Area - ChatGPT Style Floating Capsule */}
                     <div className="w-full px-4 pb-6 pt-2">
-                        <div className={`max-w-3xl mx-auto bg-white rounded-2xl border shadow-xl shadow-slate-200/50 transition-all p-3 relative ${isListening ? 'border-red-400 ring-2 ring-red-100' : 'border-slate-200 focus-within:border-indigo-300 focus-within:ring-4 focus-within:ring-indigo-100/50'}`}>
+                        <div className={`max-w-3xl mx-auto bg-white rounded-full border shadow-lg shadow-slate-200/50 transition-all relative flex items-center gap-2 px-4 py-2 ${isListening ? 'border-red-400 ring-2 ring-red-100' : 'border-slate-200 focus-within:border-slate-300 focus-within:ring-4 focus-within:ring-slate-100/50'}`}>
 
-                            <textarea
+                            {/* Plus Button (Placeholder for Attachments) */}
+                            <button className="p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                            </button>
+
+                            <input
+                                type="text"
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder={isListening ? "Listening..." : "Message OPEC..."}
-                                className={`w-full pl-3 pr-16 py-2 bg-transparent border-0 focus:ring-0 resize-none h-14 max-h-48 text-[16px] text-slate-800 placeholder:text-slate-400 leading-relaxed custom-scrollbar ${isListening ? 'placeholder:text-red-400' : ''}`}
+                                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
+                                placeholder={isListening ? "Listening..." : "Ask anything"}
+                                className={`flex-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-[16px] text-slate-800 placeholder:text-slate-400 ${isListening ? 'placeholder:text-red-400' : ''}`}
                                 disabled={!navigator.onLine}
                             />
 
-                            <div className="flex items-center justify-between px-1 pt-2 border-t border-slate-50 mt-1">
-                                <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={() => setIsJobMarketOpen(true)}
-                                        className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                                        title="Job Market"
-                                    >
-                                        <Briefcase className="w-5 h-5" />
-                                    </button>
+                            {/* Right Side Buttons */}
+                            <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                    onClick={toggleListening}
+                                    className={`p-2 rounded-full transition-all ${isListening ? 'bg-red-50 text-red-500 animate-pulse' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                                    title="Voice Input"
+                                >
+                                    {isListening ? <Square className="w-5 h-5 fill-current" /> : <Mic className="w-5 h-5" />}
+                                </button>
 
-                                    <button
-                                        onClick={() => setIsFastMode(!isFastMode)}
-                                        className={`p-2 rounded-lg transition-colors flex items-center gap-1.5 ${!isFastMode
-                                            ? 'bg-purple-50 text-purple-600'
-                                            : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                                        title={isFastMode ? "Switch to Deep Mode" : "Switch to Fast Mode"}
-                                    >
-                                        {isFastMode ? <Zap className="w-5 h-5" /> : <Brain className="w-5 h-5" />}
-                                    </button>
-
-                                    <button
-                                        onClick={() => setIsSearchMode(!isSearchMode)}
-                                        className={`p-2 rounded-lg transition-colors ${isSearchMode ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                                        title="Web Search"
-                                    >
-                                        <Globe className="w-5 h-5" />
-                                    </button>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={toggleListening}
-                                        className={`p-2 rounded-lg transition-all ${isListening ? 'bg-red-50 text-red-500 animate-pulse' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                                        title="Voice Input"
-                                    >
-                                        {isListening ? <Square className="w-5 h-5 fill-current" /> : <Mic className="w-5 h-5" />}
-                                    </button>
-
-                                    <Button
-                                        onClick={() => handleSendMessage()}
-                                        disabled={!inputValue.trim() || loading || !navigator.onLine}
-                                        className={`h-9 w-9 !p-0 rounded-xl flex items-center justify-center transition-all ${inputValue.trim() ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-slate-100 text-slate-300'}`}
-                                    >
-                                        <ArrowRight className="w-5 h-5" />
-                                    </Button>
-                                </div>
+                                {/* Send / Voice Mode Toggle */}
+                                <button
+                                    onClick={() => inputValue.trim() ? handleSendMessage() : setIsVoiceModeOpen(true)}
+                                    disabled={loading || !navigator.onLine}
+                                    className={`p-2.5 rounded-full flex items-center justify-center transition-all ${inputValue.trim() ? 'bg-slate-800 hover:bg-slate-900 text-white' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                                >
+                                    {inputValue.trim() ? <ArrowRight className="w-5 h-5" /> : <Headphones className="w-5 h-5" />}
+                                </button>
                             </div>
                         </div>
 
@@ -1043,6 +1110,40 @@ export const Chat = () => {
                             isGeneratingReport={generatingReport}
                         />
                     </div>
+                )}
+            </AnimatePresence>
+
+            {/* Interview Report Modal */}
+            <InterviewReportModal
+                isOpen={isReportModalOpen}
+                onClose={() => {
+                    setIsReportModalOpen(false);
+                    setSelectedReport(null);
+                }}
+                report={selectedReport?.report || null}
+                session={{
+                    company: selectedReport?.session?.company || voiceContext.company || '',
+                    role: selectedReport?.session?.role || voiceContext.role || '',
+                    duration_seconds: selectedReport?.session?.duration_seconds || 0
+                }}
+            />
+
+            {/* Interview History Sidebar */}
+            <AnimatePresence>
+                {showInterviewHistory && (
+                    <motion.div
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        className="fixed right-0 top-0 h-full z-[70] p-6 flex items-center"
+                    >
+                        <InterviewHistorySidebar
+                            sessions={interviewSessions}
+                            onSelectSession={handleViewReport}
+                            onDeleteSession={handleDeleteSession}
+                        />
+                    </motion.div>
                 )}
             </AnimatePresence>
 

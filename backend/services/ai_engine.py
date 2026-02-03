@@ -286,5 +286,21 @@ def enhance_with_mcp_data(question):
         if result.get('status') == 'success':
             return result.get('data')
             
+    # Check for Company Research intent
+    elif any(k in question_lower for k in ['research', 'culture', 'interview process', 'values', 'analyze company', 'tell me about']):
+        ignored_words = ['research', 'analyze', 'culture', 'company', 'interview', 'process', 'values', 'of', 'at', 'the', 'for', 'about', 'tell', 'me']
+        
+        # Clean query to get company name
+        query = question_lower
+        for k in ['research', 'analyze', 'culture', 'interview process', 'values', 'tell me about']:
+            query = query.replace(k, '')
+        
+        company_name = query.strip()
+        
+        if company_name and len(company_name) > 2:
+            result = MCPJobTools.autonomous_company_research(company_name)
+            if result.get('status') == 'success':
+                return result.get('data')
+
     return None
 

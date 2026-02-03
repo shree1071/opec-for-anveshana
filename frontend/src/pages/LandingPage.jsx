@@ -119,7 +119,7 @@ export function LandingPage() {
                                 </SignUpButton>
                             </SignedOut>
                             <SignedIn>
-                                <Link to="/opec/onboarding">
+                                <Link to="/opec/dashboard">
                                     <Button className="h-16 px-10 text-xl font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-900/10 hover:shadow-2xl hover:shadow-slate-900/20 hover:-translate-y-1 transition-all duration-300 w-full sm:w-auto rounded-xl">
                                         Go to Dashboard
                                         <ChevronRight className="w-6 h-6 ml-2" />
@@ -442,7 +442,7 @@ export function LandingPage() {
                         </SignUpButton>
                     </SignedOut>
                     <SignedIn>
-                        <Link to="/opec/onboarding">
+                        <Link to="/opec/dashboard">
                             <Button className="h-14 px-8 text-lg bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-indigo-200 transition-all">
                                 Go to Dashboard
                             </Button>

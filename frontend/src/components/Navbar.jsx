@@ -45,7 +45,7 @@ export function Navbar() {
 
                     <div className="flex items-center gap-4">
                         <SignedOut>
-                            <SignInButton mode="modal">
+                            <SignInButton mode="modal" forceRedirectUrl="/opec/dashboard">
                                 <button className="text-slate-600 hover:text-slate-900 font-medium">
                                     Sign In
                                 </button>

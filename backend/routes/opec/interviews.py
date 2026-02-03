@@ -32,26 +32,25 @@ def save_interview_session():
         result = supabase.table('interview_sessions').insert(session_data).execute()
         session_id = result.data[0]['id']
         
-        # For now, create a simple placeholder report
-        # TODO: Implement AI report generation
+        # Generate AI-powered report
+        from core.ai.interview_report import generate_interview_report
+        
+        ai_report = generate_interview_report(
+            company=data.get('company', 'Unknown'),
+            role=data.get('role', 'Unknown'),
+            duration_seconds=data.get('duration', 0)
+        )
+        
         report_data = {
             'session_id': session_id,
-            'overall_score': 75,
-            'communication_score': 80,
-            'technical_score': 70,
-            'confidence_score': 75,
-            'strengths': [
-                'Clear communication',
-                'Good technical knowledge',
-                'Confident delivery'
-            ],
-            'weaknesses': [
-                'Could improve on specific examples',
-                'Pace was slightly fast',
-                'More depth needed on technical concepts'
-            ],
-            'key_insights': 'Overall solid performance with room for improvement in providing concrete examples and slowing down delivery.',
-            'recommendations': 'Practice with STAR method for behavioral questions. Deep dive into technical concepts. Record yourself to check pacing.'
+            'overall_score': ai_report['overall_score'],
+            'communication_score': ai_report['communication_score'],
+            'technical_score': ai_report['technical_score'],
+            'confidence_score': ai_report['confidence_score'],
+            'strengths': ai_report['strengths'],
+            'weaknesses': ai_report['weaknesses'],
+            'key_insights': ai_report['key_insights'],
+            'recommendations': ai_report['recommendations']
         }
         
         report_result = supabase.table('interview_reports').insert(report_data).execute()
@@ -62,7 +61,9 @@ def save_interview_session():
         }), 201
         
     except Exception as e:
+        import traceback
         print(f"Error saving session: {e}")
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
@@ -129,30 +130,34 @@ def get_interview_report(session_id):
         supabase = get_supabase_client()
         
         # Verify ownership
-        session = supabase.table('interview_sessions')\
+        session_result = supabase.table('interview_sessions')\
             .select('*')\
             .eq('id', session_id)\
             .eq('clerk_id', clerk_id)\
-            .maybeSingle()\
             .execute()
         
-        if not session.data:
+        if not session_result.data or len(session_result.data) == 0:
             return jsonify({'error': 'Session not found'}), 404
         
+        session_data = session_result.data[0]
+        
         # Get report
-        report = supabase.table('interview_reports')\
+        report_result = supabase.table('interview_reports')\
             .select('*')\
             .eq('session_id', session_id)\
-            .maybeSingle()\
             .execute()
         
+        report_data = report_result.data[0] if report_result.data and len(report_result.data) > 0 else None
+        
         return jsonify({
-            'session': session.data,
-            'report': report.data
+            'session': session_data,
+            'report': report_data
         }), 200
         
     except Exception as e:
+        import traceback
         print(f"Error fetching report: {e}")
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 

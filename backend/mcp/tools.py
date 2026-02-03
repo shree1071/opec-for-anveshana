@@ -8,7 +8,9 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime
 from .job_api import search_jobs, get_salary_insights, get_adzuna_client
 from .news_api import search_news
+from .news_api import search_news
 from .youtube_api import search_videos
+from .tavily_api import TavilyAPI
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +46,29 @@ class MCPJobTools:
             }
         except Exception as e:
             return {"tool": "get_industry_news", "status": "error", "error": str(e)}
+
+    @staticmethod
+    def autonomous_company_research(
+        company_name: str
+    ) -> Dict[str, Any]:
+        """
+        🕵️ Autonomous Company Research using Tavily
+        """
+        try:
+            tavily = TavilyAPI()
+            result = tavily.research_company(company_name)
+            
+            if result.get("status") == "error":
+                return {"tool": "autonomous_company_research", "status": "error", "error": result.get("error")}
+
+            return {
+                "tool": "autonomous_company_research",
+                "status": "success",
+                "data": result,
+                "interpretation_hint": f"Found research on {company_name}. Use the 'summary' to explain their culture and values. Cite sources."
+            }
+        except Exception as e:
+            return {"tool": "autonomous_company_research", "status": "error", "error": str(e)}
 
     @staticmethod
     def find_learning_videos(
@@ -331,6 +356,11 @@ MCP_TOOLS = {
         "function": MCPJobTools.find_learning_videos,
         "description": "Find learning videos on YouTube",
         "parameters": ["topic", "max_results"]
+    },
+    "autonomous_company_research": {
+        "function": MCPJobTools.autonomous_company_research,
+        "description": "Deep-dive research on a company's culture, values, and interview process",
+        "parameters": ["company_name"]
     }
 }
 
