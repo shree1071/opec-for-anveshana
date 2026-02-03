@@ -76,10 +76,9 @@ export function ResultsDashboard() {
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-[#F9F8F6] to-slate-50 py-8 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-            {/* Background decoration */}
-            <div className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-br from-blue-100/40 to-purple-100/40 rounded-full blur-3xl -z-10" />
-            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-gradient-to-br from-green-100/40 to-cyan-100/40 rounded-full blur-3xl -z-10" />
+        <div className="min-h-screen bg-[#faf9f7] py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans text-stone-900">
+            {/* Background decoration - Minimal */}
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-100/30 rounded-full blur-3xl -z-10 opacity-50" />
 
             <div className="max-w-7xl mx-auto space-y-8">
 
@@ -88,30 +87,25 @@ export function ResultsDashboard() {
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
-                    className="text-center relative"
+                    className="text-center relative mb-12"
                 >
                     <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-slate-200 mb-4"
+                        className="inline-flex items-center gap-2 px-3 py-1 bg-white rounded-full shadow-sm border border-stone-200 mb-6"
                     >
-                        <motion.div {...pulseGlow}>
-                            <Sparkles className="w-4 h-4 text-indigo-600" />
-                        </motion.div>
-                        <span className="text-sm font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                            AI Career Analysis Complete
+                        <Sparkles className="w-4 h-4 text-amber-500" />
+                        <span className="text-xs font-semibold text-stone-600 uppercase tracking-wider">
+                            Analysis Complete
                         </span>
                     </motion.div>
 
-                    <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-3">
-                        Your Career{" "}
-                        <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                            Roadmap
-                        </span>
+                    <h1 className="text-4xl sm:text-5xl font-serif font-medium text-stone-900 mb-4 tracking-tight">
+                        Your Career Roadmap
                     </h1>
-                    <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                        Personalized {roadmap.length}-year strategy tailored to your goals and market conditions.
+                    <p className="text-xl text-stone-500 max-w-2xl mx-auto font-light leading-relaxed">
+                        A personalized {roadmap.length}-year strategic path tailored to your unique potential.
                     </p>
                 </motion.div>
 
@@ -133,19 +127,19 @@ export function ResultsDashboard() {
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 overflow-hidden relative"
+                                className="bg-[#1c1917] rounded-2xl p-8 overflow-hidden relative shadow-2xl"
                             >
-                                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIvPjwvc3ZnPg==')] opacity-50" />
+                                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=')] opacity-30" />
 
                                 <div className="relative z-10">
-                                    <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center justify-between mb-8">
                                         <div>
-                                            <h3 className="text-xl font-bold text-white mb-1">Your {roadmap.length}-Year Journey</h3>
-                                            <p className="text-slate-400 text-sm">Click on Roadmap tab for detailed view</p>
+                                            <h3 className="text-2xl font-serif font-medium text-white mb-2">Your {roadmap.length}-Year Journey</h3>
+                                            <p className="text-stone-400 text-sm font-light">Click on Roadmap tab for detailed view</p>
                                         </div>
                                         <button
                                             onClick={() => setActiveTab('roadmap')}
-                                            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                                            className="px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-stone-200 text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                                         >
                                             View Full Journey
                                             <ArrowRight className="w-4 h-4" />
@@ -153,30 +147,30 @@ export function ResultsDashboard() {
                                     </div>
 
                                     {/* Journey Path Preview */}
-                                    <div className="flex items-center justify-between overflow-x-auto pb-2">
+                                    <div className="flex items-center justify-between overflow-x-auto pb-4 scrollbar-hide">
                                         {roadmap.map((stage, index) => (
                                             <motion.div
                                                 key={index}
                                                 initial={{ opacity: 0, scale: 0.8 }}
                                                 animate={{ opacity: 1, scale: 1 }}
                                                 transition={{ delay: index * 0.1 }}
-                                                className="flex items-center"
+                                                className="flex items-center group min-w-[100px]"
                                             >
                                                 <div className="flex flex-col items-center">
-                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold ${index === 0
-                                                        ? 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/30'
+                                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-sm font-bold border transition-all ${index === 0
+                                                        ? 'bg-amber-500 border-amber-400 text-stone-900 shadow-lg shadow-amber-900/20'
                                                         : index === roadmap.length - 1
-                                                            ? 'bg-gradient-to-br from-pink-500 to-purple-500 text-white shadow-lg shadow-purple-500/30'
-                                                            : 'bg-slate-700 text-slate-300'
+                                                            ? 'bg-stone-100 border-stone-200 text-stone-900'
+                                                            : 'bg-stone-800 border-stone-700 text-stone-300 group-hover:bg-stone-700'
                                                         }`}>
                                                         Y{stage.year}
                                                     </div>
-                                                    <p className="text-xs text-slate-400 mt-2 text-center max-w-[80px] truncate">
+                                                    <p className="text-xs text-stone-500 mt-3 text-center max-w-[100px] truncate font-medium">
                                                         {stage.role}
                                                     </p>
                                                 </div>
                                                 {index < roadmap.length - 1 && (
-                                                    <div className="w-8 md:w-16 h-0.5 bg-gradient-to-r from-slate-600 to-slate-700 mx-2" />
+                                                    <div className="w-12 h-px bg-stone-800 mx-4" />
                                                 )}
                                             </motion.div>
                                         ))}
@@ -199,18 +193,15 @@ export function ResultsDashboard() {
                                             variants={cardVariant}
                                             whileHover={{ y: -4, transition: { duration: 0.2 } }}
                                         >
-                                            <Card className="bg-white border-none shadow-lg hover:shadow-xl transition-shadow p-5 h-full relative overflow-hidden group">
-                                                {/* Gradient overlay on hover */}
-                                                <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-5 transition-opacity`} />
-
+                                            <Card className="bg-white border text-left border-stone-200 shadow-card hover:shadow-lg transition-all p-6 h-full relative overflow-hidden group rounded-xl">
                                                 <div className="relative z-10">
-                                                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center mb-3 shadow-lg shadow-${card.color}-500/20`}>
-                                                        <Icon className="w-5 h-5 text-white" />
+                                                    <div className={`w-10 h-10 rounded-lg bg-stone-50 border border-stone-100 flex items-center justify-center mb-4`}>
+                                                        <Icon className="w-5 h-5 text-stone-700" />
                                                     </div>
-                                                    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                                                    <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest mb-2">
                                                         {card.title}
                                                     </h3>
-                                                    <p className="text-slate-900 font-medium text-sm leading-relaxed">
+                                                    <p className="text-stone-900 font-medium text-lg leading-relaxed font-serif">
                                                         {analysis[card.key]}
                                                     </p>
                                                 </div>

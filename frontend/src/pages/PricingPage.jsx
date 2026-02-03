@@ -1,270 +1,208 @@
 import { motion } from "framer-motion";
-import { Check, X, Shield, Zap, Loader2, Lock } from "lucide-react";
-import { useUser } from "@clerk/clerk-react";
-import { Button } from "../components/ui/Button";
 import { useState } from "react";
-import { X as CloseIcon } from "lucide-react";
-import { PricingTable } from '@clerk/clerk-react';
+import {
+    Sparkles, MessageSquare, Brain, Zap, Upload, Target,
+    Clock, Users, Building2, Check, ArrowRight
+} from "lucide-react";
+import { Button } from "../components/ui/Button";
+import { useUser, SignInButton } from "@clerk/clerk-react";
 
 export function PricingPage() {
-    const { isSignedIn, user } = useUser();
-    const [showCheckout, setShowCheckout] = useState(false);
+    const { isSignedIn } = useUser();
+    const [activeTab, setActiveTab] = useState('personal');
 
-    // Smoothness states
-    const [redirectingTier, setRedirectingTier] = useState(null);
-    const [isCheckoutLoaded, setIsCheckoutLoaded] = useState(false);
-
-    // Handle checkout loader timeout
-    useEffect(() => {
-        if (showCheckout) {
-            const timer = setTimeout(() => {
-                setIsCheckoutLoaded(true);
-            }, 2000); // Give it 2s to render
-            return () => clearTimeout(timer);
-        } else {
-            setIsCheckoutLoaded(false);
-        }
-    }, [showCheckout]);
-
-    const handleUpgradeClick = (tierName) => {
-        if (!isSignedIn) {
-            return window.location.href = "/sign-in";
-        }
-
-        setRedirectingTier(tierName);
-        setTimeout(() => {
-            setShowCheckout(true);
-            setRedirectingTier(null);
-        }, 600);
-    };
-
-    const tiers = [
+    const personalPlans = [
         {
-            name: "Free",
-            price: "$0",
-            period: "/month",
-            description: "Perfect for getting started with interview prep.",
+            name: 'Free',
+            price: 0,
+            tagline: 'See what AI can do',
+            buttonText: 'Your current plan',
+            buttonStyle: 'border border-stone-300 text-stone-500 cursor-default bg-transparent',
             features: [
-                "3 AI Mock Interviews/month",
-                "Basic Voice Mode",
-                "Standard Performance Reports",
-                "Community Support"
+                { icon: Sparkles, text: 'Get simple explanations' },
+                { icon: MessageSquare, text: 'Have short chats for common questions' },
+                { icon: Brain, text: 'Try out career insights' },
+                { icon: Clock, text: 'Limited context memory' },
             ],
-            notIncluded: [
-                "Detailed AI Analysis",
-                "Download PDF Reports",
-                "Interview Recordings"
-            ],
-            cta: "Continue Free",
-            variant: "outline",
-            disabled: false
         },
         {
-            name: "Starter",
-            price: "$2.99",
-            period: "/month",
-            description: "Essential tools for serious candidates.",
+            name: 'Go',
+            price: 249,
+            tagline: 'Keep chatting with expanded access',
+            buttonText: 'Upgrade to Go',
+            buttonStyle: 'bg-stone-800 hover:bg-stone-900 text-white shadow-md hover:shadow-lg',
             features: [
-                "15 AI Mock Interviews/month",
-                "Unlimited Voice Mode",
-                "Detailed AI Insights",
-                "Email Support",
-                "Priority AI Response"
+                { icon: Sparkles, text: 'Explore career topics in depth' },
+                { icon: Upload, text: 'Upload resumes and documents' },
+                { icon: Brain, text: 'Get more memory for smarter replies' },
+                { icon: Target, text: 'Get help with planning and tasks' },
+                { icon: Zap, text: 'Explore custom career paths' },
             ],
-            notIncluded: [
-                "Interview Recordings",
-                "PDF Report Downloads"
-            ],
-            cta: "Start Free Trial",
-            variant: "primary",
+        },
+        {
+            name: 'Plus',
+            price: 999,
+            tagline: 'Unlock the full experience',
             popular: true,
-            gradient: "from-blue-500 to-indigo-600"
+            buttonText: 'Upgrade to Plus',
+            buttonStyle: 'bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-200',
+            features: [
+                { icon: Sparkles, text: 'Solve complex career problems' },
+                { icon: MessageSquare, text: 'Have long chats over multiple sessions' },
+                { icon: Brain, text: 'Remember goals and past conversations' },
+                { icon: Target, text: 'Plan interviews with agent mode' },
+                { icon: Users, text: 'Organize projects and customize agents' },
+                { icon: Zap, text: 'Produce and share reports' },
+            ],
         },
         {
-            name: "Student",
-            price: "$1.99",
-            period: "/month",
-            description: "Full access for verified students.",
+            name: 'Pro',
+            price: 4999,
+            tagline: 'Maximize your productivity',
+            buttonText: 'Upgrade to Pro',
+            buttonStyle: 'bg-stone-800 hover:bg-stone-900 text-white shadow-md hover:shadow-lg',
             features: [
-                "15 AI Mock Interviews/month",
-                "Unlimited Voice Mode",
-                "Detailed AI Insights",
-                "Requires .edu email"
+                { icon: Sparkles, text: 'Master advanced tasks and topics' },
+                { icon: Brain, text: 'Tackle big projects with unlimited agents' },
+                { icon: Target, text: 'Create high-quality resumes at any scale' },
+                { icon: Clock, text: 'Keep full context with maximum memory' },
+                { icon: Zap, text: 'Run research and plan tasks with agents' },
+                { icon: Building2, text: 'Scale your projects and automate workflows' },
             ],
-            notIncluded: [
-                "Interview Recordings",
-                "PDF Report Downloads"
-            ],
-            cta: "Get Student Plan",
-            variant: "outline",
-            popular: false
         },
-        {
-            name: "Pro",
-            price: "$5.99",
-            period: "/month",
-            description: "The ultimate interview preparation suite.",
-            features: [
-                "Unlimited AI Interviews",
-                "Advanced OPEC Analysis",
-                "Download PDF Reports",
-                "Interview Recordings",
-                "24/7 Priority Support",
-                "Custom Company Scenarios"
-            ],
-            notIncluded: [],
-            cta: "Upgrade (Checkout)",
-            variant: "premium",
-            popular: false,
-            gradient: "from-purple-500 to-pink-600"
-        }
     ];
 
+    const businessPlans = [
+        {
+            name: 'Business',
+            price: 1499,
+            tagline: 'Get more work done with AI for teams',
+            recommended: true,
+            buttonText: 'Upgrade to Business',
+            buttonStyle: 'bg-amber-600 hover:bg-amber-700 text-white shadow-lg',
+            features: [
+                { icon: Building2, text: 'Conduct professional analysis' },
+                { icon: Users, text: 'Get unlimited messages with GPT-5' },
+                { icon: Brain, text: 'Priority access to new features' },
+                { icon: Target, text: 'Advanced admin controls' },
+                { icon: Zap, text: 'Team collaboration features' },
+                { icon: Clock, text: 'Dedicated support' },
+            ],
+        },
+    ];
+
+    const plans = activeTab === 'personal' ? personalPlans : businessPlans;
+
     return (
-        <div className="min-h-screen bg-slate-50 py-20 px-4 sm:px-6 lg:px-8 relative">
-            <div className={`transition-all duration-300 ${showCheckout ? 'blur-sm opacity-50 pointer-events-none' : ''}`}>
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
-                        <motion.h2
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="text-base font-semibold text-blue-600 tracking-wide uppercase"
+        <div className="min-h-screen bg-[#faf9f7] pt-24 pb-20 px-4 sm:px-6 lg:px-8 font-sans">
+            <div className="max-w-7xl mx-auto">
+                <div className="text-center mb-12">
+                    <motion.h2
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-amber-600 font-semibold tracking-wide uppercase text-sm mb-3"
+                    >
+                        Pricing Plans
+                    </motion.h2>
+                    <motion.h1
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="text-4xl md:text-5xl font-serif font-medium text-stone-900 mb-6"
+                    >
+                        Invest in your future career.
+                    </motion.h1>
+                    <motion.p
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="text-xl text-stone-500 max-w-2xl mx-auto"
+                    >
+                        Professional grade AI career simulation and coaching tools, accessible to everyone.
+                    </motion.p>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex justify-center mb-12">
+                    <div className="bg-white p-1.5 rounded-full shadow-sm border border-stone-200 inline-flex">
+                        <button
+                            onClick={() => setActiveTab('personal')}
+                            className={`px-8 py-2.5 rounded-full text-sm font-medium transition-all ${activeTab === 'personal'
+                                ? 'bg-stone-900 text-white shadow-md'
+                                : 'text-stone-500 hover:text-stone-900 hover:bg-stone-50'
+                                }`}
                         >
-                            Pricing
-                        </motion.h2>
-                        <motion.h1
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="mt-2 text-4xl font-extrabold text-slate-900 sm:text-5xl sm:tracking-tight lg:text-6xl"
+                            Personal
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('business')}
+                            className={`px-8 py-2.5 rounded-full text-sm font-medium transition-all ${activeTab === 'business'
+                                ? 'bg-stone-900 text-white shadow-md'
+                                : 'text-stone-500 hover:text-stone-900 hover:bg-stone-50'
+                                }`}
                         >
-                            Invest in your career.
-                        </motion.h1>
-                        <motion.p
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="max-w-xl mx-auto mt-5 text-xl text-slate-500"
-                        >
-                            Quality interview practice for less than a cup of coffee.
-                        </motion.p>
+                            Business
+                        </button>
                     </div>
+                </div>
 
-                    <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-                        {tiers.map((tier, index) => (
-                            <motion.div
-                                key={tier.name}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.3 + (index * 0.1) }}
-                                className={`relative flex flex-col p-8 bg-white rounded-2xl shadow-xl border ${tier.popular ? 'border-blue-500 ring-2 ring-blue-500 ring-opacity-50' : 'border-slate-200'} ${tier.name === 'Pro' ? 'overflow-hidden' : ''}`}
-                            >
-                                {tier.name === 'Starter' && (
-                                    <div className="absolute top-0 right-0 -mr-1 -mt-1 w-32 h-32 overflow-hidden">
-                                        <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
-                                            POPULAR
-                                        </div>
-                                    </div>
-                                )}
-                                {tier.name === 'Pro' && (
-                                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 to-pink-600" />
-                                )}
-
-                                <div className="mb-6">
-                                    <h3 className="text-2xl font-bold text-slate-900">{tier.name}</h3>
-                                    <div className="mt-4 flex items-baseline">
-                                        <span className="text-4xl font-extrabold text-slate-900">{tier.price}</span>
-                                        {tier.price !== "Free" && <span className="text-slate-500 ml-1">{tier.period}</span>}
-                                    </div>
-                                    <p className="mt-2 text-slate-500 text-sm">{tier.description}</p>
+                {/* Plans Grid */}
+                <div className={`grid gap-6 ${activeTab === 'personal' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 justify-center'}`}>
+                    {plans.map((plan, index) => (
+                        <motion.div
+                            key={plan.name}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 + (index * 0.1) }}
+                            className={`relative flex flex-col p-6 bg-white rounded-2xl border transition-all hover:shadow-xl ${plan.popular || plan.recommended
+                                    ? 'border-amber-200 shadow-md ring-1 ring-amber-100'
+                                    : 'border-stone-200 shadow-sm hover:border-stone-300'
+                                }`}
+                        >
+                            {(plan.popular || plan.recommended) && (
+                                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                                    <span className="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full border border-amber-200 uppercase tracking-wide">
+                                        {plan.popular ? 'Most Popular' : 'Recommended'}
+                                    </span>
                                 </div>
+                            )}
 
-                                <ul className="flex-1 space-y-4 mb-8">
-                                    {tier.features.map((feature) => (
-                                        <li key={feature} className="flex items-start">
-                                            <div className="flex-shrink-0">
-                                                <Check className="w-5 h-5 text-green-500" />
-                                            </div>
-                                            <p className="ml-3 text-slate-600 text-sm">{feature}</p>
-                                        </li>
-                                    ))}
-                                    {tier.notIncluded.map((feature) => (
-                                        <li key={feature} className="flex items-start opacity-50">
-                                            <div className="flex-shrink-0">
-                                                <X className="w-5 h-5 text-slate-400" />
-                                            </div>
-                                            <p className="ml-3 text-slate-500 text-sm">{feature}</p>
-                                        </li>
-                                    ))}
-                                </ul>
+                            <div className="mb-6">
+                                <h3 className="text-xl font-serif font-bold text-stone-900 mb-2">{plan.name}</h3>
+                                <div className="flex items-baseline gap-1 mb-3">
+                                    <span className="text-sm text-stone-500 font-medium">₹</span>
+                                    <span className="text-4xl font-bold text-stone-900">
+                                        {plan.price.toLocaleString('en-IN')}
+                                    </span>
+                                    <span className="text-stone-500 text-sm">/month</span>
+                                </div>
+                                <p className="text-sm text-stone-500 min-h-[40px]">{plan.tagline}</p>
+                            </div>
 
-                                <Button
-                                    disabled={tier.disabled || (redirectingTier !== null && redirectingTier !== tier.name)}
-                                    variant={tier.variant === 'primary' ? 'primary' : 'outline'}
-                                    className={`w-full py-3 ${tier.variant === 'premium' ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90' : ''}`}
-                                    onClick={() => tier.price !== "$0" && handleUpgradeClick(tier.name)}
-                                >
-                                    {redirectingTier === tier.name ? (
-                                        <span className="flex items-center justify-center gap-2">
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                            Redirecting...
-                                        </span>
-                                    ) : tier.cta}
-                                </Button>
-                            </motion.div>
-                        ))}
-                    </div>
+                            <div className="flex-1 mb-8">
+                                <div className="space-y-3">
+                                    {plan.features.map((feature, idx) => (
+                                        <div key={idx} className="flex items-start gap-3">
+                                            <feature.icon className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                                            <span className="text-sm text-stone-600 leading-snug">{feature.text}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button className={`w-full py-3 rounded-xl text-sm font-semibold transition-all ${plan.buttonStyle}`}>
+                                {plan.buttonText}
+                            </button>
+                        </motion.div>
+                    ))}
+                </div>
+
+                <div className="mt-16 text-center">
+                    <p className="text-stone-500 text-sm">
+                        Enterprise? <a href="#" className="text-amber-600 font-medium hover:underline">Contact Sales</a> for volume licensing.
+                    </p>
                 </div>
             </div>
-
-            {/* Clerk Pricing Overlay */}
-            {showCheckout && (
-                <div className="fixed inset-0 z-[200] flex flex-col bg-white">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex-1 flex flex-col w-full h-full overflow-hidden"
-                    >
-                        <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-white z-20 shadow-sm">
-                            <div className="flex items-center gap-3 text-slate-900 font-bold text-xl">
-                                <div className="p-2 bg-green-100 rounded-full">
-                                    <Lock className="w-5 h-5 text-green-600" />
-                                </div>
-                                Secure Checkout
-                            </div>
-                            <button
-                                onClick={() => setShowCheckout(false)}
-                                className="p-2 hover:bg-slate-100 rounded-full transition-colors group"
-                            >
-                                <CloseIcon className="w-6 h-6 text-slate-400 group-hover:text-slate-600" />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto bg-slate-50 relative flex justify-center">
-                            {/* Fallback/Loading State - Visible if Table doesn't load */}
-                            <div className="absolute inset-0 flex flex-col items-center justify-center z-0 p-8 text-center">
-                                <Loader2 className="w-8 h-8 text-slate-400 animate-spin mb-4" />
-                                <p className="text-slate-500 font-medium mb-2">Loading Secure Checkout...</p>
-                                <div className="max-w-md bg-yellow-50 border border-yellow-100 rounded-lg p-4 mt-8">
-                                    <p className="text-yellow-800 text-sm font-semibold mb-1">Developer Note:</p>
-                                    <p className="text-yellow-700 text-xs">
-                                        If this screen remains blank, you likely haven't created a <strong>Pricing Table</strong> in your Clerk Dashboard yet.
-                                        <br />
-                                        Go to <em>Clerk Dashboard &gt; Components &gt; Pricing Table</em> and create one.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="w-full max-w-7xl mx-auto p-4 md:p-8 min-h-screen relative z-10">
-                                {/* @ts-ignore */}
-                                <PricingTable
-                                    customerEmail={user?.primaryEmailAddress?.emailAddress}
-                                />
-                            </div>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
         </div>
     );
 }

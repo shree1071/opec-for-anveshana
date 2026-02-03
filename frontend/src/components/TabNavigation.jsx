@@ -9,8 +9,8 @@ export function TabNavigation({ activeTab, setActiveTab, tabs }) {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`relative px-6 py-3 font-medium transition-colors whitespace-nowrap ${activeTab === tab.id
-                                ? 'text-blue-600'
-                                : 'text-slate-600 hover:text-slate-900'
+                            ? 'text-stone-900'
+                            : 'text-stone-500 hover:text-stone-800'
                             }`}
                     >
                         <span className="flex items-center gap-2">
@@ -20,7 +20,7 @@ export function TabNavigation({ activeTab, setActiveTab, tabs }) {
                         {activeTab === tab.id && (
                             <motion.div
                                 layoutId="activeTab"
-                                className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
+                                className="absolute bottom-0 left-0 right-0 h-0.5 bg-stone-900"
                                 initial={false}
                                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                             />

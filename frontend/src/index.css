@@ -4,7 +4,11 @@
 
 @layer base {
   body {
-    @apply bg-[#F9F8F6] text-slate-900 antialiased;
+    @apply bg-[#faf9f7] text-stone-900 antialiased font-sans;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
   }
 }
 

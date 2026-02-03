@@ -771,6 +771,8 @@ export const Chat = () => {
                 onDelete={handleDeleteConversation}
                 isOpen={isHistoryOpen}
                 onClose={() => setIsHistoryOpen(false)}
+                onToggle={() => setIsHistoryOpen(!isHistoryOpen)}
+                onOpenPricing={() => setIsPricingOpen(true)}
             />
 
             {/* Main Content */}
@@ -778,20 +780,11 @@ export const Chat = () => {
                 {/* Header - Transparent ChatGPT Style */}
                 <header className="h-12 flex items-center justify-between px-4 bg-transparent z-10 shrink-0">
                     <div className="flex items-center gap-3">
-                        {/* Toggle History Sidebar */}
-                        <button
-                            onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                            className="p-2 -ml-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                            title="Toggle Chat History"
-                        >
-                            <PanelRight className={`w-5 h-5 transform ${isHistoryOpen ? 'rotate-180' : ''}`} />
-                        </button>
-
                         <div className="flex items-center gap-2">
-                            <div className="bg-slate-800 p-1.5 rounded-lg">
+                            <div className="bg-stone-800 p-1.5 rounded-lg">
                                 <Brain className="w-4 h-4 text-white" />
                             </div>
-                            <span className="font-semibold text-slate-800">OPEC</span>
+                            <span className="font-semibold text-stone-800">OPEC</span>
                         </div>
                     </div>
 
