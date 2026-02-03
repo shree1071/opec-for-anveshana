@@ -23,7 +23,13 @@ def create_app():
     # Configure CORS with explicit settings
     CORS(app, resources={
         r"/api/*": {
-            "origins": ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
+            "origins": [
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "http://127.0.0.1:5173",
+                "https://opec-bmsit.vercel.app",
+                "https://opec-for-anveshana.onrender.com"
+            ],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "X-Clerk-User-Id", "Authorization"],
             "supports_credentials": True
