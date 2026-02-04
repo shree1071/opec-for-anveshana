@@ -1,12 +1,27 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, X, Sparkles, User, ArrowRight, Briefcase, Search } from 'lucide-react';
+import { Building2, X, Sparkles, User, ArrowRight, Briefcase, Search, Video, Mic } from 'lucide-react';
 import LiveJobMarket from '../../../components/LiveJobMarket';
+
+type InterviewMode = 'voice' | '3d-avatar';
+
+export interface InterviewerAvatar {
+    id: string;
+    name: string;
+    gender: 'male' | 'female';
+    description: string;
+    emoji: string;
+}
+
+export const INTERVIEWER_AVATARS: InterviewerAvatar[] = [
+    { id: 'mark', name: 'Mark', gender: 'male', description: 'Senior Tech Lead', emoji: '👨‍💼' },
+    { id: 'sarah', name: 'Sarah', gender: 'female', description: 'HR Director', emoji: '👩‍💼' },
+];
 
 interface InterviewSetupModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onStart: (company: string, role: string) => void;
+    onStart: (company: string, role: string, mode: InterviewMode, interviewer?: InterviewerAvatar) => void;
     onBrowseJobs: () => void;
 }
 
@@ -14,25 +29,31 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({ isOpen
     const [company, setCompany] = useState('');
     const [role, setRole] = useState('');
     const [showJobSearch, setShowJobSearch] = useState(false);
+    const [interviewMode, setInterviewMode] = useState<InterviewMode>('voice');
+    const [selectedInterviewer, setSelectedInterviewer] = useState<InterviewerAvatar>(INTERVIEWER_AVATARS[0]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (company && role) {
-            onStart(company, role);
+            onStart(company, role, interviewMode, interviewMode === '3d-avatar' ? selectedInterviewer : undefined);
             onClose();
             // Reset
             setCompany('');
             setRole('');
             setShowJobSearch(false);
+            setInterviewMode('voice');
+            setSelectedInterviewer(INTERVIEWER_AVATARS[0]);
         }
     };
 
     const handleLiveJobSelect = (company: string, role: string) => {
-        onStart(company, role);
+        onStart(company, role, interviewMode, interviewMode === '3d-avatar' ? selectedInterviewer : undefined);
         onClose();
         setCompany('');
         setRole('');
         setShowJobSearch(false);
+        setInterviewMode('voice');
+        setSelectedInterviewer(INTERVIEWER_AVATARS[0]);
     };
 
     if (!isOpen) return null;
@@ -110,12 +131,78 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({ isOpen
                                         </div>
                                     </div>
 
+                                    {/* Mode Selection */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Interview Mode</label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setInterviewMode('voice')}
+                                                className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${interviewMode === 'voice'
+                                                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                                    : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                                                    }`}
+                                            >
+                                                <Mic className="w-5 h-5" />
+                                                <span className="text-sm font-medium">Voice Only</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setInterviewMode('3d-avatar')}
+                                                className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2 relative ${interviewMode === '3d-avatar'
+                                                    ? 'border-purple-500 bg-purple-50 text-purple-700'
+                                                    : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                                                    }`}
+                                            >
+                                                <Video className="w-5 h-5" />
+                                                <span className="text-sm font-medium">3D Avatar</span>
+                                                <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-bold rounded-full">NEW</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Interviewer Selection - Only for 3D Avatar */}
+                                    {interviewMode === '3d-avatar' && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-2">Choose Your Interviewer</label>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                {INTERVIEWER_AVATARS.map((interviewer) => (
+                                                    <button
+                                                        key={interviewer.id}
+                                                        type="button"
+                                                        onClick={() => setSelectedInterviewer(interviewer)}
+                                                        className={`p-4 rounded-xl border-2 transition-all flex items-center gap-3 ${selectedInterviewer.id === interviewer.id
+                                                            ? 'border-purple-500 bg-purple-50'
+                                                            : 'border-slate-200 hover:border-slate-300'
+                                                            }`}
+                                                    >
+                                                        <div className="text-3xl">{interviewer.emoji}</div>
+                                                        <div className="text-left">
+                                                            <div className={`font-semibold ${selectedInterviewer.id === interviewer.id ? 'text-purple-700' : 'text-slate-700'
+                                                                }`}>
+                                                                {interviewer.name}
+                                                            </div>
+                                                            <div className="text-xs text-slate-500">{interviewer.description}</div>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                     <button
                                         type="submit"
                                         disabled={!company || !role}
-                                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 group"
+                                        className={`w-full py-3 text-white rounded-xl font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 group ${interviewMode === '3d-avatar'
+                                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-purple-500/20'
+                                            : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20'
+                                            }`}
                                     >
-                                        <span>Start Mock Interview</span>
+                                        {interviewMode === '3d-avatar' ? (
+                                            <Video className="w-4 h-4" />
+                                        ) : (
+                                            <Mic className="w-4 h-4" />
+                                        )}
+                                        <span>Start {interviewMode === '3d-avatar' ? '3D' : 'Voice'} Interview</span>
                                         <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                     </button>
                                 </form>

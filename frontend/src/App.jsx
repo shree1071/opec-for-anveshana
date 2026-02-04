@@ -11,29 +11,33 @@ import CollegeDirectory from "./pages/CollegeDirectory";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastContainer } from "./components/Toast";
 import { PricingPage } from "./pages/PricingPage";
+import { BackendAwakeLoader } from "./components/BackendAwakeLoader";
 
 function App() {
     return (
         <ErrorBoundary>
             <Router>
-                <Layout>
-                    <Routes>
-                        <Route path="/" element={<LandingPage />} />
-                        <Route path="/simulate" element={<SimulationPage />} />
-                        <Route path="/results" element={<ResultsDashboard />} />
-                        <Route path="/colleges" element={<CollegeDirectory />} />
-                        <Route path="/pricing" element={<PricingPage />} />
+                <BackendAwakeLoader>
+                    <Layout>
 
-                        {/* OPEC Routes */}
-                        <Route path="/opec/onboarding" element={<Onboarding />} />
-                        <Route path="/opec/dashboard" element={<Dashboard />} />
-                        <Route path="/opec/chat" element={<Chat />} />
-                        <Route path="/opec/mock-interview" element={<MockInterview />} />
-                        <Route path="/opec/simulate" element={<SimulationPage />} />
+                        <Routes>
+                            <Route path="/" element={<LandingPage />} />
+                            <Route path="/simulate" element={<SimulationPage />} />
+                            <Route path="/results" element={<ResultsDashboard />} />
+                            <Route path="/colleges" element={<CollegeDirectory />} />
+                            <Route path="/pricing" element={<PricingPage />} />
 
-                        <Route path="/login" element={<div className="text-center pt-20">Login Page Coming Soon</div>} />
-                    </Routes>
-                </Layout>
+                            {/* OPEC Routes */}
+                            <Route path="/opec/onboarding" element={<Onboarding />} />
+                            <Route path="/opec/dashboard" element={<Dashboard />} />
+                            <Route path="/opec/chat" element={<Chat />} />
+                            <Route path="/opec/mock-interview" element={<MockInterview />} />
+                            <Route path="/opec/simulate" element={<SimulationPage />} />
+
+                            <Route path="/login" element={<div className="text-center pt-20">Login Page Coming Soon</div>} />
+                        </Routes>
+                    </Layout>
+                </BackendAwakeLoader>
                 <ToastContainer />
             </Router>
         </ErrorBoundary>

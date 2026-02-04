@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { VoiceMode } from './components/VoiceMode';
-import { InterviewSetupModal } from './components/InterviewSetupModal';
+import { VoiceMode3D } from './components/VoiceMode3D';
+import { InterviewSetupModal, type InterviewerAvatar, INTERVIEWER_AVATARS } from './components/InterviewSetupModal';
 import { InterviewReportModal } from './components/InterviewReportModal';
 import {
-    Mic, History, ArrowLeft, Clock, Building2, Trash2,
-    Play, Sparkles, ChevronRight, Calendar
+    Clock, Calendar, ChevronRight, Play, BarChart2,
+    CheckCircle, MessageSquare, AlertCircle, Trash2, Video, Mic,
+    History, ArrowLeft, Building2, Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,6 +18,8 @@ interface VoiceContext {
     company?: string;
     role?: string;
 }
+
+type InterviewMode = 'voice' | '3d-avatar';
 
 interface Session {
     id: string | number;
@@ -56,7 +60,10 @@ export function MockInterview() {
     const { user } = useUser();
     const [isSetupOpen, setIsSetupOpen] = useState(false);
     const [isVoiceActive, setIsVoiceActive] = useState(false);
+    const [is3DActive, setIs3DActive] = useState(false);
     const [voiceContext, setVoiceContext] = useState<VoiceContext>({});
+    const [currentMode, setCurrentMode] = useState<InterviewMode>('voice');
+    const [selectedInterviewer, setSelectedInterviewer] = useState<InterviewerAvatar | undefined>(undefined);
     const [sessions, setSessions] = useState<Session[]>([]);
     const [selectedSession, setSelectedSession] = useState<string | number | null>(null);
     const [reportData, setReportData] = useState<ReportData | null>(null);
@@ -87,10 +94,17 @@ export function MockInterview() {
         }
     };
 
-    const handleStartInterview = (company: string, role: string) => {
+    const handleStartInterview = (company: string, role: string, mode: InterviewMode, interviewer?: InterviewerAvatar) => {
         setVoiceContext({ interviewMode: true, company, role });
+        setCurrentMode(mode);
+        setSelectedInterviewer(interviewer);
         setIsSetupOpen(false);
-        setIsVoiceActive(true);
+
+        if (mode === '3d-avatar') {
+            setIs3DActive(true);
+        } else {
+            setIsVoiceActive(true);
+        }
     };
 
     const handleInterviewEnd = async (durationSeconds: number) => {
@@ -367,6 +381,16 @@ export function MockInterview() {
                 onClose={() => setIsVoiceActive(false)}
                 userData={user}
                 initialContext={voiceContext}
+                onSessionEnd={handleInterviewEnd}
+            />
+
+            <VoiceMode3D
+                isOpen={is3DActive}
+                onClose={() => setIs3DActive(false)}
+                userData={user}
+                company={voiceContext.company || ''}
+                role={voiceContext.role || ''}
+                interviewer={selectedInterviewer}
                 onSessionEnd={handleInterviewEnd}
             />
 

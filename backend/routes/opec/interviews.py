@@ -187,3 +187,92 @@ def delete_interview_session(session_id):
     except Exception as e:
         print(f"Error deleting session: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+@interviews_bp.route('/tavus/conversation', methods=['POST'])
+def create_tavus_conversation():
+    """Create a new Tavus 3D avatar conversation for interview"""
+    try:
+        clerk_id = request.headers.get('X-Clerk-User-Id')
+        
+        if not clerk_id:
+            return jsonify({'error': 'Unauthorized'}), 401
+        
+        data = request.json or {}
+        company = data.get('company', 'General')
+        role = data.get('role', 'Software Engineer')
+        resume_context = data.get('resume_context', '')
+        
+        # Build interview context for the avatar
+        interview_context = f"""You are an AI interviewer conducting a mock interview.
+Company: {company}
+Role: {role}
+Resume/Background: {resume_context}
+
+Your task is to:
+1. Introduce yourself as an interviewer from {company}
+2. Ask relevant technical and behavioral questions for the {role} position
+3. Provide helpful feedback during the interview
+4. Be professional yet encouraging
+"""
+        
+        custom_greeting = f"Hello! I'm your interviewer today for the {role} position at {company}. Let's begin. Can you start by telling me a bit about yourself and why you're interested in this role?"
+        
+        from services.tavus_service import get_tavus_service
+        
+        try:
+            tavus = get_tavus_service()
+        except ValueError as e:
+            # Tavus not configured, return fallback message
+            return jsonify({
+                'error': 'Tavus not configured',
+                'message': str(e),
+                'fallback': True
+            }), 503
+        
+        result = tavus.create_conversation(
+            custom_greeting=custom_greeting,
+            conversation_name=f"Interview: {role} at {company}",
+            conversational_context=interview_context,
+            max_call_duration=1800  # 30 minutes
+        )
+        
+        return jsonify({
+            'conversation_id': result.get('conversation_id'),
+            'conversation_url': result.get('conversation_url'),
+            'status': result.get('status'),
+            'company': company,
+            'role': role
+        }), 201
+        
+    except Exception as e:
+        import traceback
+        print(f"Error creating Tavus conversation: {e}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@interviews_bp.route('/tavus/conversation/<conversation_id>/end', methods=['POST'])
+def end_tavus_conversation(conversation_id):
+    """End an active Tavus conversation"""
+    try:
+        clerk_id = request.headers.get('X-Clerk-User-Id')
+        
+        if not clerk_id:
+            return jsonify({'error': 'Unauthorized'}), 401
+        
+        from services.tavus_service import get_tavus_service
+        
+        try:
+            tavus = get_tavus_service()
+        except ValueError:
+            return jsonify({'error': 'Tavus not configured'}), 503
+        
+        result = tavus.end_conversation(conversation_id)
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        print(f"Error ending Tavus conversation: {e}")
+        return jsonify({'error': str(e)}), 500
+

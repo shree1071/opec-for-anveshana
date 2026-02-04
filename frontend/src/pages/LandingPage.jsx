@@ -303,26 +303,37 @@ export function LandingPage() {
                         </div>
                     </motion.div>
 
-                    {/* Small Card - Mock Interview */}
+                    {/* Small Card - 3D Avatar Interview */}
                     <motion.div
                         whileHover={{ scale: 1.02 }}
-                        className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-3xl p-8 text-white shadow-xl flex flex-col justify-between overflow-hidden relative"
+                        className="bg-gradient-to-br from-purple-600 via-pink-600 to-rose-600 rounded-3xl p-8 text-white shadow-xl flex flex-col justify-between overflow-hidden relative"
                     >
+                        {/* Animated Avatar Glow */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+
                         <div className="relative z-10">
-                            <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6">
-                                <Mic className="w-6 h-6 text-white" />
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full text-xs font-semibold mb-4">
+                                <Sparkles className="w-3 h-3" /> NEW FEATURE
                             </div>
-                            <h3 className="text-2xl font-bold mb-2">AI Mock Interviews</h3>
-                            <p className="text-indigo-100 text-sm">
-                                Practice with a Senior Dev AI before the real thing. Company-specific prep.
+                            <h3 className="text-2xl font-bold mb-2">3D Avatar Interviews</h3>
+                            <p className="text-white/80 text-sm">
+                                Practice with a realistic AI avatar interviewer. See their expressions, hear their voice—just like the real thing.
                             </p>
                         </div>
 
-                        {/* Audio Wave Visual */}
-                        <div className="flex items-end gap-1 h-12 mt-4 opacity-50">
-                            {[40, 70, 30, 80, 50, 90, 40, 60, 30].map((h, i) => (
-                                <div key={i} className="w-2 bg-white rounded-full animate-pulse" style={{ height: `${h}%`, animationDelay: `${i * 0.1}s` }} />
-                            ))}
+                        {/* Avatar Illustration */}
+                        <div className="relative z-10 flex items-center justify-center mt-6">
+                            <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30">
+                                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-white to-purple-100 flex items-center justify-center">
+                                    <span className="text-3xl">🧑‍💼</span>
+                                </div>
+                            </div>
+                            {/* Speaking Animation */}
+                            <div className="absolute -right-2 bottom-0 flex gap-0.5">
+                                {[40, 70, 50, 80, 40].map((h, i) => (
+                                    <div key={i} className="w-1 bg-white/60 rounded-full animate-pulse" style={{ height: `${h * 0.3}px`, animationDelay: `${i * 0.15}s` }} />
+                                ))}
+                            </div>
                         </div>
                     </motion.div>
 

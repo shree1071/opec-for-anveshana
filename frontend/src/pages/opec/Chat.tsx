@@ -780,22 +780,29 @@ export const Chat = () => {
                 {/* Header - Transparent ChatGPT Style */}
                 <header className="h-12 flex items-center justify-between px-4 bg-transparent z-10 shrink-0">
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
+                        <Link to="/opec/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                             <div className="bg-stone-800 p-1.5 rounded-lg">
                                 <Brain className="w-4 h-4 text-white" />
                             </div>
                             <span className="font-semibold text-stone-800">OPEC</span>
-                        </div>
+                        </Link>
                     </div>
 
-                    {/* Get Plus Button - Center */}
-                    <button
-                        onClick={() => setIsPricingOpen(true)}
-                        className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-full shadow-sm transition-colors"
-                    >
-                        <Sparkles className="w-4 h-4" />
-                        Get Plus
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <Link
+                            to="/opec/dashboard"
+                            className="px-4 py-1.5 text-sm font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-full transition-colors"
+                        >
+                            Dashboard
+                        </Link>
+                        <button
+                            onClick={() => setIsPricingOpen(true)}
+                            className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white bg-stone-900 hover:bg-stone-800 rounded-full shadow-sm transition-colors"
+                        >
+                            <Sparkles className="w-4 h-4" />
+                            Pricing
+                        </button>
+                    </div>
 
                     <div className="flex items-center gap-2">
                         <button

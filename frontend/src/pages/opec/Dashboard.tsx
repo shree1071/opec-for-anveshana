@@ -80,26 +80,31 @@ export const Dashboard = () => {
                     transition={{ delay: 0.2, duration: 0.5 }}
                     className="grid md:grid-cols-3 gap-6 mb-16"
                 >
-                    {/* AI Interview Partner */}
+                    {/* AI Interview Partner - Now with 3D Avatar */}
                     <Link to="/opec/mock-interview" className="group">
-                        <div className="bg-white border border-stone-200 rounded-2xl p-6 h-full hover:border-amber-400 hover:shadow-lg transition-all duration-300 relative overflow-hidden flex flex-col">
-                            <div className="absolute top-0 right-0 p-4 opacity-50 text-stone-300 group-hover:text-amber-200 transition-colors">
+                        <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-6 h-full hover:border-purple-400 hover:shadow-lg transition-all duration-300 relative overflow-hidden flex flex-col">
+                            <div className="absolute top-0 right-0 p-4 opacity-30 text-purple-300 group-hover:text-pink-300 transition-colors">
                                 <Mic className="w-20 h-20 -mr-6 -mt-6 rotate-12" />
                             </div>
 
                             <div className="relative z-10 flex-1">
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-semibold rounded-full mb-4">
-                                    <Sparkles className="w-3 h-3" />
-                                    New
-                                </span>
-                                <h2 className="text-xl font-serif font-medium text-stone-900 mb-2 group-hover:text-amber-700 transition-colors">
-                                    AI Interview Partner
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-semibold rounded-full">
+                                        <Sparkles className="w-3 h-3" />
+                                        3D Avatar
+                                    </span>
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-semibold rounded-full">
+                                        New
+                                    </span>
+                                </div>
+                                <h2 className="text-xl font-serif font-medium text-stone-900 mb-2 group-hover:text-purple-700 transition-colors">
+                                    3D AI Interview
                                 </h2>
                                 <p className="text-sm text-stone-500 mb-6 leading-relaxed">
-                                    Realistic voice mock interviews with instant feedback on tone and content.
+                                    Practice with a realistic <span className="font-semibold text-purple-600">3D avatar interviewer</span> or voice-only mode. See expressions, hear feedback.
                                 </p>
                             </div>
-                            <div className="flex items-center text-amber-600 text-sm font-medium group-hover:translate-x-1 transition-transform mt-auto">
+                            <div className="flex items-center text-purple-600 text-sm font-medium group-hover:translate-x-1 transition-transform mt-auto">
                                 Start Practice <ArrowRight className="w-3 h-3 ml-1" />
                             </div>
                         </div>
