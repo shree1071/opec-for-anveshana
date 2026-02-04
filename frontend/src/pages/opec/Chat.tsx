@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser, useClerk } from "@clerk/clerk-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "../../components/ui";
 import { Brain, AlertCircle, PanelRight, PanelRightClose, ArrowRight, Minimize2, Maximize2, FileText, Trash2, Download, Activity, Mic, Square, Headphones, Briefcase, Globe, Zap, LogOut, User, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
