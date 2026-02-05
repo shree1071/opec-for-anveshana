@@ -17,27 +17,29 @@ function App() {
     return (
         <ErrorBoundary>
             <Router>
-                <BackendAwakeLoader>
-                    <Layout>
+                <Layout>
 
-                        <Routes>
-                            <Route path="/" element={<LandingPage />} />
-                            <Route path="/simulate" element={<SimulationPage />} />
-                            <Route path="/results" element={<ResultsDashboard />} />
-                            <Route path="/colleges" element={<CollegeDirectory />} />
-                            <Route path="/pricing" element={<PricingPage />} />
+                    <Routes>
+                        <Route path="/" element={<LandingPage />} />
+                        <Route path="/simulate" element={<SimulationPage />} />
+                        <Route path="/results" element={<ResultsDashboard />} />
+                        <Route path="/colleges" element={<CollegeDirectory />} />
+                        <Route path="/pricing" element={<PricingPage />} />
 
-                            {/* OPEC Routes */}
-                            <Route path="/opec/onboarding" element={<Onboarding />} />
-                            <Route path="/opec/dashboard" element={<Dashboard />} />
-                            <Route path="/opec/chat" element={<Chat />} />
-                            <Route path="/opec/mock-interview" element={<MockInterview />} />
-                            <Route path="/opec/simulate" element={<SimulationPage />} />
+                        {/* OPEC Routes */}
+                        <Route path="/opec/onboarding" element={<Onboarding />} />
+                        <Route path="/opec/dashboard" element={<Dashboard />} />
+                        <Route path="/opec/chat" element={
+                            <BackendAwakeLoader>
+                                <Chat />
+                            </BackendAwakeLoader>
+                        } />
+                        <Route path="/opec/mock-interview" element={<MockInterview />} />
+                        <Route path="/opec/simulate" element={<SimulationPage />} />
 
-                            <Route path="/login" element={<div className="text-center pt-20">Login Page Coming Soon</div>} />
-                        </Routes>
-                    </Layout>
-                </BackendAwakeLoader>
+                        <Route path="/login" element={<div className="text-center pt-20">Login Page Coming Soon</div>} />
+                    </Routes>
+                </Layout>
                 <ToastContainer />
             </Router>
         </ErrorBoundary>
