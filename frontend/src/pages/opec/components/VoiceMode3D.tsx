@@ -23,7 +23,6 @@ interface ConversationState {
 export const VoiceMode3D: React.FC<VoiceMode3DProps> = ({
     isOpen,
     onClose,
-    userData,
     company,
     role,
     resumeContext = '',
@@ -105,7 +104,6 @@ Remember: You are conducting a JOB INTERVIEW, not making a sales pitch.`;
                 },
                 body: JSON.stringify({
                     replica_id: replicaId,
-                    persona_id: import.meta.env.VITE_TAVUS_PERSONA_ID || "p3d53f9772ed", // Updated to Mark - Tech Lead
                     conversation_name: `Interview: ${role} at ${company} (${interviewer?.name || 'Default'})`,
                     conversational_context: context,
                     custom_greeting: greeting,
