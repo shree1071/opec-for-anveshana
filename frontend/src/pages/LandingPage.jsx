@@ -1,10 +1,13 @@
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { useState } from "react";
 import { ArrowRight, Brain, MessageSquare, TrendingUp, Sparkles, Target, Zap, Users, CheckCircle, ChevronRight, Play, Mic } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
-import { SignedIn, SignedOut, SignUpButton } from "@clerk/clerk-react";
+import { SignedIn, SignedOut, useClerk } from "@clerk/clerk-react";
 import CustomIcon from "../components/icons/CustomIcon";
+
+import { useNavigate } from "react-router-dom";
+import { ServerStartingOverlay } from "../components/loader/ServerStartingOverlay";
 
 const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
@@ -56,10 +59,57 @@ const companyLogos = [
 const marqueeLogos = [...companyLogos, ...companyLogos];
 
 export function LandingPage() {
+    const navigate = useNavigate();
+    const clerk = useClerk();
+    const [isServerLoading, setIsServerLoading] = useState(false);
+    const [elapsed, setElapsed] = useState(0);
+
+    const handleStartJourney = async () => {
+        setIsServerLoading(true);
+        const startTime = Date.now();
+        const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+        // Start elapsed timer
+        const intervalId = setInterval(() => {
+            setElapsed(Math.floor((Date.now() - startTime) / 1000));
+        }, 1000);
+
+        try {
+            // Ping backend
+            await fetch(`${API_URL}/`, { method: 'GET' });
+
+            // Minimum wait time logic (optional, but requested "takes 30 to 60s")
+            // We'll just wait for the ping. If it's fast, great.
+            // If the user *wants* it to take 30s unrelated to actual status, we can enforce it.
+            // Given the prompt "show server is starting it takes 30 to 60 s", it implies the server ACTUALLY takes that long.
+            // So we just await the fetch.
+
+        } catch (error) {
+            console.warn("Backend check failed, proceeding anyway", error);
+        } finally {
+            clearInterval(intervalId);
+            setIsServerLoading(false);
+
+            if (clerk.user) {
+                navigate('/opec/dashboard');
+            } else {
+                clerk.openSignUp({
+                    redirectUrl: '/opec/onboarding',
+                    appearance: {
+                        elements: {
+                            modalContent: "z-[250]" // Ensure it's above other elements if needed
+                        }
+                    }
+                });
+            }
+        }
+    };
+
     return (
         <div className="font-sans bg-[#F9F8F6] text-slate-900 min-h-screen selection:bg-indigo-100 selection:text-indigo-900">
 
             {/* Hero Section */}
+            <ServerStartingOverlay isVisible={isServerLoading} elapsed={elapsed} />
             <section className="relative pt-20 pb-12 lg:pt-32 lg:pb-20 overflow-hidden perspective-[1200px]">
                 {/* Background Decor */}
                 <div className="absolute inset-0 -z-10 bg-[#F9F8F6] bg-grid-slate-200 [mask-image:linear-gradient(to_bottom,white,transparent)]" />
@@ -111,20 +161,22 @@ export function LandingPage() {
 
                         <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-5 w-full justify-center px-4">
                             <SignedOut>
-                                <SignUpButton mode="modal" forceRedirectUrl="/opec/onboarding">
-                                    <Button className="h-16 px-10 text-xl font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-900/10 hover:shadow-2xl hover:shadow-slate-900/20 hover:-translate-y-1 transition-all duration-300 w-full sm:w-auto rounded-xl">
-                                        Start Your Journey
-                                        <ChevronRight className="w-6 h-6 ml-2" />
-                                    </Button>
-                                </SignUpButton>
+                                <Button
+                                    onClick={handleStartJourney}
+                                    className="h-16 px-10 text-xl font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-900/10 hover:shadow-2xl hover:shadow-slate-900/20 hover:-translate-y-1 transition-all duration-300 w-full sm:w-auto rounded-xl"
+                                >
+                                    Start Your Journey
+                                    <ChevronRight className="w-6 h-6 ml-2" />
+                                </Button>
                             </SignedOut>
                             <SignedIn>
-                                <Link to="/opec/dashboard">
-                                    <Button className="h-16 px-10 text-xl font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-900/10 hover:shadow-2xl hover:shadow-slate-900/20 hover:-translate-y-1 transition-all duration-300 w-full sm:w-auto rounded-xl">
-                                        Go to Dashboard
-                                        <ChevronRight className="w-6 h-6 ml-2" />
-                                    </Button>
-                                </Link>
+                                <Button
+                                    onClick={handleStartJourney}
+                                    className="h-16 px-10 text-xl font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-900/10 hover:shadow-2xl hover:shadow-slate-900/20 hover:-translate-y-1 transition-all duration-300 w-full sm:w-auto rounded-xl"
+                                >
+                                    Go to Dashboard
+                                    <ChevronRight className="w-6 h-6 ml-2" />
+                                </Button>
                             </SignedIn>
                             <Button variant="outline" className="h-16 px-10 text-lg font-semibold border-2 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50 w-full sm:w-auto rounded-xl">
                                 <Play className="w-5 h-5 mr-2 fill-slate-600" />
@@ -446,18 +498,20 @@ export function LandingPage() {
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
                     <SignedOut>
-                        <SignUpButton mode="modal" forceRedirectUrl="/opec/onboarding">
-                            <Button className="h-14 px-8 text-lg bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-indigo-200 transition-all">
-                                Get Started for Free
-                            </Button>
-                        </SignUpButton>
+                        <Button
+                            onClick={handleStartJourney}
+                            className="h-14 px-8 text-lg bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-indigo-200 transition-all"
+                        >
+                            Get Started for Free
+                        </Button>
                     </SignedOut>
                     <SignedIn>
-                        <Link to="/opec/dashboard">
-                            <Button className="h-14 px-8 text-lg bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-indigo-200 transition-all">
-                                Go to Dashboard
-                            </Button>
-                        </Link>
+                        <Button
+                            onClick={handleStartJourney}
+                            className="h-14 px-8 text-lg bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-indigo-200 transition-all"
+                        >
+                            Go to Dashboard
+                        </Button>
                     </SignedIn>
                 </div>
             </section>
