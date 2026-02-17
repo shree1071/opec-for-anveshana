@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, Server, Globe } from 'lucide-react';
-import { ServerStartingOverlay } from './loader/ServerStartingOverlay';
+// import { ServerStartingOverlay } from './loader/ServerStartingOverlay'; // Removed
 
 export const BackendAwakeLoader = ({ children }) => {
     const [isReady, setIsReady] = useState(false);
@@ -41,22 +41,12 @@ export const BackendAwakeLoader = ({ children }) => {
         }, 1000);
 
         return () => {
-            clearTimeout(timer);
-            clearInterval(elapsedTimer);
+            // clearTimeout(timer); // No longer needed
+            // clearInterval(elapsedTimer); // No longer needed
         };
     }, []);
 
-    return (
-        <>
-            <ServerStartingOverlay isVisible={showLoader && !isReady} elapsed={elapsed} />
-            {/* When not ready, we might want to hide children or show them underneath. 
-                The original code didn't render children until ready if showLoader was true? 
-                Actually, looking at original: if (showLoader && !isReady) return loader;
-                So it blocked children.
-            */}
-            {(!showLoader || isReady) && children}
-        </>
-    );
-
+    // Non-blocking: we still check availability but don't block UI
+    // Or better, just render children directly as requested.
     return <>{children}</>;
 };

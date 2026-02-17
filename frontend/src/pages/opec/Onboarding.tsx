@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button, Card } from "../../components/ui";
 import { ArrowRight, CheckCircle } from "lucide-react";
-import { ServerStartingOverlay } from "../../components/loader/ServerStartingOverlay";
+// import { ServerStartingOverlay } from "../../components/loader/ServerStartingOverlay";
 
 export const Onboarding = () => {
     const { user, isLoaded, isSignedIn } = useUser();
@@ -13,8 +13,8 @@ export const Onboarding = () => {
     // ALL HOOKS MUST BE BEFORE ANY EARLY RETURNS
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
-    const [isServerLoading, setIsServerLoading] = useState(false);
-    const [elapsed, setElapsed] = useState(0);
+    // const [isServerLoading, setIsServerLoading] = useState(false); // Removed
+    // const [elapsed, setElapsed] = useState(0); // Removed
     const [formData, setFormData] = useState({
         education_level: "", // "school" or "college"
         grade_or_year: "", // "10th", "12th", "1st Year", etc.
@@ -51,12 +51,7 @@ export const Onboarding = () => {
             console.error("No user found");
             return;
         }
-        setLoading(true);
-        setIsServerLoading(true);
-        const startTime = Date.now();
-        const intervalId = setInterval(() => {
-            setElapsed(Math.floor((Date.now() - startTime) / 1000));
-        }, 1000);
+        setLoading(true); // Keep button loading state
 
         try {
             const payload = {
@@ -69,9 +64,7 @@ export const Onboarding = () => {
 
             const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-            // Ping server first if waking up (optional, but good for cold starts)
-            await fetch(`${API_URL}/`, { method: 'GET' }).catch(() => { });
-
+            // We still hit the API, but without the "Server Starting" overlay
             const res = await fetch(`${API_URL}/api/opec/student/profile`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -83,23 +76,17 @@ export const Onboarding = () => {
                 navigate("/opec/dashboard", { state: { showPricingOnboarding: true } });
             } else {
                 console.error("Failed to save profile");
-                // Stop loader if failed so user can retry
-                setIsServerLoading(false);
             }
         } catch (error) {
             console.error("Error:", error);
-            setIsServerLoading(false);
         } finally {
             setLoading(false);
-            clearInterval(intervalId);
-            // We don't turn off isServerLoading in success case because we are navigating away
-            // and we want the overlay to cover the transition.
         }
     };
 
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-            <ServerStartingOverlay isVisible={isServerLoading} elapsed={elapsed} />
+            {/* Overlay Removed */}
             <div className="max-w-2xl w-full">
                 <div className="mb-8 text-center">
                     <h1 className="text-3xl font-bold text-slate-900">Welcome! Let's build your profile</h1>
