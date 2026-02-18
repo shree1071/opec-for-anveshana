@@ -62,6 +62,14 @@ export function LandingPage() {
     const navigate = useNavigate();
     const clerk = useClerk();
 
+    const handleStartJourney = () => {
+        if (clerk.user) {
+            navigate('/opec/dashboard');
+        } else {
+            navigate('/login');
+        }
+    };
+
 
     return (
         <div className="font-sans bg-[#F9F8F6] text-slate-900 min-h-screen selection:bg-indigo-100 selection:text-indigo-900">
